@@ -1,0 +1,82 @@
+Selfie Poker
+
+Played with a deck of 52 cards;
+
+Start of game: dealt hand of six cards
+
+Gameplay loop:
+13 card slots per round in a 'tableau'
+- 5 slots on the bottom row
+- 5 slots on the middle row
+- 3 slots on the top row
+
+A slot is filled by playing a card from your hand.
+
+The slots are filled from bottom to top, one slot at a time. Once the top row is filled, the bottom and middle row alternate until all rows of slots are filled.
+
+After you play a card from your hand, you draw a card from the deck.
+
+Each 'row' is analyzed like a poker hand
+At the end of each round, all 13 slots should be filled. 
+
+At the end of each round, each row should be a stronger poker hand than all of the rows above it. This means that the bottom row should be a stronger pokwer hand than the middle and top row, and the middle row should be a stronger poker hand than the top row.
+
+---
+Once all 13 slots are filled, we analyze the score of each hand according to the following:
+
+– Bottom and Middle rows (five card rows) –
+Scores in the following format: {'Hand Name' – [score if bottom row, score if middle row]}
+High card – [x, 0]
+One Pair – [1, 2]
+Two Pair – [3, 6]
+Three fo a Kind – [10, 20]
+Straight – [20, 40]
+Flush – [30, 60]
+Full House – [40, 80]
+Four of a Kind – [60, 120]
+Straight Flush – [150, 300]
+Royal Flush – [250, x]
+
+– Top row (three card rows) –
+Scores in the following format: {'Hand Name' – [score of hand]}
+High Card – [0]
+One Pair – [2 to 25, depending on rank]; 
+    pair of 2s = 2; pair of 3s = 3; 10s = 10; Js = 12; pair of Qs = 15; pair of Ks = 20; pair of As = 25
+Three of a Kind – [60 to 100, depending on rank]
+    2|2|2, 3|3|3, to 10|10|10 = 60; 3Js = 70, 3Qs = 80, 3Ks = 90, 3As = 100
+---
+
+After scores are calculated, we take out all cards that 'scored' in each row. 
+A card scores if it's 'used' in the poker hand that scores in its row.
+The cards that didn't score are shuffled together and dealt out as intial cards in slots for the next round, dealt in order from bottom to top repeating until all remaining cards from the previous round are dealt.
+Then, we shuffle all cards that are NOT in our hand or our three rows and shuffle them together to form the draw pile for the next round. 
+
+
+--- 
+– Example completed round –
+
+9c|9h|4s
+3d|3h|As|3c|Jd
+8d|9d|4d|Ad|Qd
+
+The score of this round is as follows;
+Top row pair of 9s = 9 points
+Middle row three of a kind = 20 points
+Bottom row flush = 30 points
+Total points --> 59 points
+
+Now, we take out all cards that 'scored'
+From the top row, the two 9s contributed to scoring, so we take those out and are left with the 4 of spades
+From the middle row, the three 3s scored, so we take those out and are left with the Ace of spades and the Jack of diamonds
+From the bottom row, all five cards scored as parts of the flush, so we take out all five.
+
+To begin the next round, we do the following: 
+Put our current hand of six cards to the side.
+Shuffle together the 4 of spades, ace of spades, and jack of diamonds, then deal them randomly; one card to the bottom, then one card to the middle, then one card to the top.
+Shuffle together the two 9s, three 3s, and 5 diamonds from the bottom row with the remaining cards in the draw pile from the previous round.
+Pick back up our hand of six cards and begin the next round, filling out the 10 remaining slots that don't have an inital card.
+---
+
+We continue round by round, keeping track of the total score.
+The game continues until we reach a state where the row beats a row lower than it on the tableau. 
+
