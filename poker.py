@@ -1,5 +1,5 @@
 from typing import List, Dict, Tuple, Optional
-from game import Card
+from card import Card
 
 # Card value mapping for easier comparison
 CARD_VALUES = {

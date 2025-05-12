@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 import random
 from dataclasses import dataclass
-from enum import Enum
+from card import Card, Suit
 from poker import (
     evaluate_five_card_hand, evaluate_three_card_hand,
     calculate_five_card_score, calculate_three_card_score,
@@ -16,27 +16,6 @@ PLACEMENT_SEQUENCE = [
     ("bottom", 3), ("middle", 3),                # Next two slots
     ("bottom", 4), ("middle", 4)                 # Final two slots
 ]
-
-class Suit(Enum):
-    HEARTS = 'h'
-    DIAMONDS = 'd'
-    CLUBS = 'c'
-    SPADES = 's'
-
-class Card:
-    def __init__(self, value: str, suit: Suit):
-        self.value = value
-        self.suit = suit
-    
-    def __str__(self) -> str:
-        return f"{self.value}{self.suit.value}"
-    
-    @classmethod
-    def from_string(cls, card_str: str) -> 'Card':
-        if len(card_str) != 2:
-            raise ValueError("Card string must be 2 characters (value + suit)")
-        value, suit = card_str[0], card_str[1]
-        return cls(value, Suit(suit))
 
 class Deck:
     def __init__(self):

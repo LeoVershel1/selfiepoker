@@ -1,5 +1,6 @@
 import unittest
-from game import GameState, Card, Suit, PLACEMENT_SEQUENCE
+from game import GameState, PLACEMENT_SEQUENCE
+from card import Card, Suit
 from poker import (
     evaluate_five_card_hand, evaluate_three_card_hand,
     calculate_five_card_score, calculate_three_card_score,
