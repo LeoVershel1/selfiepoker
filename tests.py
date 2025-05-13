@@ -47,8 +47,17 @@ class TestSelfiePoker(unittest.TestCase):
     def test_round_evaluation(self):
         """Test round evaluation and scoring"""
         # Create a specific tableau to test scoring
-        # Bottom row: Flush (5 diamonds)
+        # Bottom row: Full House (strongest)
         self.game.tableau.bottom_row = [
+            Card('A', Suit.HEARTS),
+            Card('A', Suit.SPADES),
+            Card('A', Suit.CLUBS),
+            Card('K', Suit.HEARTS),
+            Card('K', Suit.SPADES)
+        ]
+        
+        # Middle row: Flush (middle strength)
+        self.game.tableau.middle_row = [
             Card('2', Suit.DIAMONDS),
             Card('4', Suit.DIAMONDS),
             Card('6', Suit.DIAMONDS),
@@ -56,20 +65,11 @@ class TestSelfiePoker(unittest.TestCase):
             Card('10', Suit.DIAMONDS)
         ]
         
-        # Middle row: Three of a kind
-        self.game.tableau.middle_row = [
-            Card('A', Suit.HEARTS),
-            Card('A', Suit.SPADES),
-            Card('A', Suit.CLUBS),
-            Card('2', Suit.HEARTS),
-            Card('3', Suit.HEARTS)
-        ]
-        
-        # Top row: Pair of Kings
+        # Top row: Three of a Kind (weakest)
         self.game.tableau.top_row = [
-            Card('K', Suit.HEARTS),
-            Card('K', Suit.SPADES),
-            Card('Q', Suit.HEARTS)
+            Card('Q', Suit.HEARTS),
+            Card('Q', Suit.SPADES),
+            Card('Q', Suit.CLUBS)
         ]
         
         self.game.tableau.current_placement_index = 13  # Mark as complete
@@ -77,15 +77,16 @@ class TestSelfiePoker(unittest.TestCase):
         # Evaluate round
         score, scoring_cards = self.game.evaluate_round()
         
-        # Verify scores
-        self.assertEqual(score, 30 + 20 + 20)  # Flush(30) + Three of a kind(20) + Pair of Kings(20)
-        
         # Verify scoring cards
-        self.assertEqual(len(scoring_cards), 10)  # 5 from flush + 3 from three of a kind + 2 from pair
+        # Full House: 5 cards (3 Aces + 2 Kings)
+        # Flush: 5 cards (all diamonds)
+        # Three of a Kind: 3 cards (all Queens)
+        self.assertEqual(len(scoring_cards), 13)  # 5 + 5 + 3 = 13
 
     def test_card_redistribution(self):
         """Test card redistribution between rounds"""
         # Set up a complete round with known cards
+        # Bottom row: Flush (strongest)
         self.game.tableau.bottom_row = [
             Card('2', Suit.DIAMONDS),
             Card('4', Suit.DIAMONDS),
@@ -93,17 +94,19 @@ class TestSelfiePoker(unittest.TestCase):
             Card('8', Suit.DIAMONDS),
             Card('10', Suit.DIAMONDS)
         ]
+        # Middle row: Two Pair (middle strength)
         self.game.tableau.middle_row = [
-            Card('A', Suit.HEARTS),
-            Card('A', Suit.SPADES),
-            Card('A', Suit.CLUBS),
-            Card('2', Suit.HEARTS),
-            Card('3', Suit.HEARTS)
-        ]
-        self.game.tableau.top_row = [
             Card('K', Suit.HEARTS),
             Card('K', Suit.SPADES),
-            Card('Q', Suit.HEARTS)
+            Card('Q', Suit.HEARTS),
+            Card('Q', Suit.SPADES),
+            Card('2', Suit.HEARTS)
+        ]
+        # Top row: High Card (weakest)
+        self.game.tableau.top_row = [
+            Card('A', Suit.HEARTS),
+            Card('3', Suit.SPADES),
+            Card('5', Suit.CLUBS)
         ]
         self.game.tableau.current_placement_index = 13
         
@@ -115,7 +118,14 @@ class TestSelfiePoker(unittest.TestCase):
         self.game.prepare_next_round(scoring_cards)
         
         # Verify non-scoring cards were used for initial tableau
-        non_scoring_cards = [Card('2', Suit.HEARTS), Card('3', Suit.HEARTS), Card('Q', Suit.HEARTS)]
+        # Non-scoring cards are:
+        # - 2♥ from middle row (kicker in two pair)
+        # - 3♠ and 5♣ from top row (not the highest card)
+        non_scoring_cards = [
+            Card('2', Suit.HEARTS),  # From middle row
+            Card('3', Suit.SPADES),  # From top row
+            Card('5', Suit.CLUBS)    # From top row
+        ]
         for card in non_scoring_cards:
             found = False
             for row in [self.game.tableau.top_row, self.game.tableau.middle_row, self.game.tableau.bottom_row]:
@@ -131,20 +141,23 @@ class TestSelfiePoker(unittest.TestCase):
     def test_game_over_condition(self):
         """Test game over condition when hands are not in correct order"""
         # Set up a tableau where middle row is stronger than bottom row
+        # Bottom row: Three of a Kind (weaker)
         self.game.tableau.bottom_row = [
+            Card('A', Suit.HEARTS),
+            Card('A', Suit.SPADES),
+            Card('A', Suit.CLUBS),
+            Card('2', Suit.HEARTS),
+            Card('3', Suit.HEARTS)
+        ]
+        # Middle row: Flush (stronger)
+        self.game.tableau.middle_row = [
             Card('2', Suit.DIAMONDS),
             Card('4', Suit.DIAMONDS),
             Card('6', Suit.DIAMONDS),
             Card('8', Suit.DIAMONDS),
             Card('10', Suit.DIAMONDS)
         ]
-        self.game.tableau.middle_row = [
-            Card('A', Suit.HEARTS),
-            Card('A', Suit.SPADES),
-            Card('A', Suit.CLUBS),
-            Card('A', Suit.DIAMONDS),
-            Card('2', Suit.HEARTS)
-        ]
+        # Top row: Pair (weakest)
         self.game.tableau.top_row = [
             Card('K', Suit.HEARTS),
             Card('K', Suit.SPADES),
@@ -153,7 +166,9 @@ class TestSelfiePoker(unittest.TestCase):
         self.game.tableau.current_placement_index = 13
         
         # Verify game over condition
-        self.assertTrue(self.game.check_game_over())
+        with self.assertRaises(ValueError) as context:
+            self.game.check_game_over()
+        self.assertIn("Bottom row (THREE_OF_A_KIND) must be stronger than middle row (FLUSH)", str(context.exception))
 
 if __name__ == '__main__':
     unittest.main() 

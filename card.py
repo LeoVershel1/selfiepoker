@@ -14,6 +14,14 @@ class Card:
     def __str__(self) -> str:
         return f"{self.value}{self.suit.value}"
     
+    def __eq__(self, other: 'Card') -> bool:
+        if not isinstance(other, Card):
+            return False
+        return self.value == other.value and self.suit == other.suit
+    
+    def __hash__(self) -> int:
+        return hash((self.value, self.suit))
+    
     @classmethod
     def from_string(cls, card_str: str) -> 'Card':
         if len(card_str) != 2:

@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple, Optional
 from card import Card
+from enum import Enum
 
 # Card value mapping for easier comparison
 CARD_VALUES = {
@@ -7,17 +8,20 @@ CARD_VALUES = {
     'J': 11, 'Q': 12, 'K': 13, 'A': 14
 }
 
-class HandType:
-    HIGH_CARD = "High Card"
-    ONE_PAIR = "One Pair"
-    TWO_PAIR = "Two Pair"
-    THREE_OF_A_KIND = "Three of a Kind"
-    STRAIGHT = "Straight"
-    FLUSH = "Flush"
-    FULL_HOUSE = "Full House"
-    FOUR_OF_A_KIND = "Four of a Kind"
-    STRAIGHT_FLUSH = "Straight Flush"
-    ROYAL_FLUSH = "Royal Flush"
+class HandType(Enum):
+    HIGH_CARD = 1
+    ONE_PAIR = 2
+    TWO_PAIR = 3
+    THREE_OF_A_KIND = 4
+    STRAIGHT = 5
+    FLUSH = 6
+    FULL_HOUSE = 7
+    FOUR_OF_A_KIND = 8
+    STRAIGHT_FLUSH = 9
+    ROYAL_FLUSH = 10
+
+    def __str__(self):
+        return self.name.replace('_', ' ').title()
 
 def get_card_values(cards: List[Card]) -> List[int]:
     """Convert card values to integers for comparison"""
@@ -36,7 +40,7 @@ def is_straight(card_values: List[int]) -> bool:
     # Check for regular straight
     return values == list(range(min(values), max(values) + 1))
 
-def evaluate_five_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
+def evaluate_five_card_hand(cards: List[Card]) -> Tuple[HandType, List[Card]]:
     """Evaluate a 5-card poker hand and return (hand_type, scoring_cards)"""
     if len(cards) != 5:
         raise ValueError("Must provide exactly 5 cards")
@@ -65,8 +69,7 @@ def evaluate_five_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
     if 4 in value_counts.values():
         four_value = [v for v, count in value_counts.items() if count == 4][0]
         four_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == four_value]
-        kicker = [card for card in sorted_cards if CARD_VALUES[card.value] != four_value][0]
-        return HandType.FOUR_OF_A_KIND, four_cards + [kicker]
+        return HandType.FOUR_OF_A_KIND, four_cards  # Only the four matching cards
     
     # Full House
     if sorted(value_counts.values()) == [2, 3]:
@@ -74,7 +77,7 @@ def evaluate_five_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
         pair_value = [v for v, count in value_counts.items() if count == 2][0]
         three_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == three_value]
         pair_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == pair_value]
-        return HandType.FULL_HOUSE, three_cards + pair_cards
+        return HandType.FULL_HOUSE, three_cards + pair_cards  # Three of a kind + pair
     
     # Flush
     if flush:
@@ -88,8 +91,7 @@ def evaluate_five_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
     if 3 in value_counts.values():
         three_value = [v for v, count in value_counts.items() if count == 3][0]
         three_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == three_value]
-        kickers = [card for card in sorted_cards if CARD_VALUES[card.value] != three_value]
-        return HandType.THREE_OF_A_KIND, three_cards + kickers
+        return HandType.THREE_OF_A_KIND, three_cards  # Only the three matching cards
     
     # Two Pair
     if list(value_counts.values()).count(2) == 2:
@@ -98,20 +100,18 @@ def evaluate_five_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
         pair_cards = []
         for pair_value in pairs:
             pair_cards.extend([card for card in sorted_cards if CARD_VALUES[card.value] == pair_value])
-        kicker = [card for card in sorted_cards if CARD_VALUES[card.value] not in pairs][0]
-        return HandType.TWO_PAIR, pair_cards + [kicker]
+        return HandType.TWO_PAIR, pair_cards  # Only the pair cards
     
     # One Pair
     if 2 in value_counts.values():
         pair_value = [v for v, count in value_counts.items() if count == 2][0]
         pair_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == pair_value]
-        kickers = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value]
-        return HandType.ONE_PAIR, pair_cards + kickers
+        return HandType.ONE_PAIR, pair_cards  # Only the pair cards
     
-    # High Card
-    return HandType.HIGH_CARD, sorted_cards
+    # High Card - only the highest card scores
+    return HandType.HIGH_CARD, [sorted_cards[0]]
 
-def evaluate_three_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
+def evaluate_three_card_hand(cards: List[Card]) -> Tuple[HandType, List[Card]]:
     """Evaluate a 3-card poker hand and return (hand_type, scoring_cards)"""
     if len(cards) != 3:
         raise ValueError("Must provide exactly 3 cards")
@@ -131,13 +131,12 @@ def evaluate_three_card_hand(cards: List[Card]) -> Tuple[str, List[Card]]:
     if 2 in value_counts.values():
         pair_value = [v for v, count in value_counts.items() if count == 2][0]
         pair_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == pair_value]
-        kicker = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value][0]
-        return HandType.ONE_PAIR, pair_cards + [kicker]
+        return HandType.ONE_PAIR, pair_cards  # Only the pair cards
     
-    # High Card
-    return HandType.HIGH_CARD, sorted_cards
+    # High Card - only the highest card scores
+    return HandType.HIGH_CARD, [sorted_cards[0]]
 
-def calculate_five_card_score(hand_type: str, cards: List[Card], is_bottom_row: bool) -> int:
+def calculate_five_card_score(hand_type: HandType, cards: List[Card], is_bottom_row: bool) -> int:
     """Calculate score for a 5-card hand based on position"""
     base_scores = {
         HandType.HIGH_CARD: [0, 0],
@@ -154,7 +153,7 @@ def calculate_five_card_score(hand_type: str, cards: List[Card], is_bottom_row: 
     
     return base_scores[hand_type][0 if is_bottom_row else 1]
 
-def calculate_three_card_score(hand_type: str, cards: List[Card]) -> int:
+def calculate_three_card_score(hand_type: HandType, cards: List[Card]) -> int:
     """Calculate score for a 3-card hand"""
     if hand_type == HandType.HIGH_CARD:
         return 0

@@ -110,14 +110,16 @@ class GameState:
         middle_hand_type, middle_scoring_cards = evaluate_five_card_hand(self.tableau.middle_row)
         bottom_hand_type, bottom_scoring_cards = evaluate_five_card_hand(self.tableau.bottom_row)
 
-        # Calculate scores
+        # Calculate scores (for scoring only, not for validation)
         top_score = calculate_three_card_score(top_hand_type, top_scoring_cards)
         middle_score = calculate_five_card_score(middle_hand_type, middle_scoring_cards, False)
         bottom_score = calculate_five_card_score(bottom_hand_type, bottom_scoring_cards, True)
 
-        # Check if hands are in correct order
-        if bottom_score <= middle_score or middle_score <= top_score:
-            raise ValueError("Hands are not in correct order")
+        # Check if hands are in correct order (bottom > middle > top)
+        if bottom_hand_type.value <= middle_hand_type.value:
+            raise ValueError(f"Bottom row ({bottom_hand_type.name}) must be stronger than middle row ({middle_hand_type.name})")
+        if middle_hand_type.value <= top_hand_type.value:
+            raise ValueError(f"Middle row ({middle_hand_type.name}) must be stronger than top row ({top_hand_type.name})")
 
         total_score = top_score + middle_score + bottom_score
         self.score += total_score
