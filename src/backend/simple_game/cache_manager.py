@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Dict, List, Tuple, Optional
-from .card import Card
+from .card import Card, Suit
 
 class SolverCache:
     def __init__(self, cache_dir: str = 'results'):
@@ -12,7 +12,7 @@ class SolverCache:
         """Generate a unique key for a hand of cards"""
         # Sort cards by value and suit to ensure consistent ordering
         sorted_cards = sorted(cards, key=lambda c: (c.value, c.suit))
-        return ','.join(f"{c.value}{c.suit}" for c in sorted_cards)
+        return ','.join(f"{c.value}{c.suit.value}" for c in sorted_cards)
     
     def _get_cache_path(self, hand_key: str) -> str:
         """Get the path to the cache file for a hand"""
@@ -32,9 +32,9 @@ class SolverCache:
                 
             # Convert the cached data back to the expected format
             arrangement = {
-                'top': [Card(value=c['value'], suit=c['suit']) for c in data['arrangement']['top']],
-                'middle': [Card(value=c['value'], suit=c['suit']) for c in data['arrangement']['middle']],
-                'bottom': [Card(value=c['value'], suit=c['suit']) for c in data['arrangement']['bottom']]
+                'top': [Card(value=c['value'], suit=Suit(c['suit'])) for c in data['arrangement']['top']],
+                'middle': [Card(value=c['value'], suit=Suit(c['suit'])) for c in data['arrangement']['middle']],
+                'bottom': [Card(value=c['value'], suit=Suit(c['suit'])) for c in data['arrangement']['bottom']]
             }
             
             return arrangement, data['immediate_score'], data['future_value']
@@ -50,9 +50,9 @@ class SolverCache:
         
         # Convert cards to serializable format
         arrangement_data = {
-            'top': [{'value': c.value, 'suit': c.suit} for c in arrangement['top']],
-            'middle': [{'value': c.value, 'suit': c.suit} for c in arrangement['middle']],
-            'bottom': [{'value': c.value, 'suit': c.suit} for c in arrangement['bottom']]
+            'top': [{'value': c.value, 'suit': c.suit.value} for c in arrangement['top']],
+            'middle': [{'value': c.value, 'suit': c.suit.value} for c in arrangement['middle']],
+            'bottom': [{'value': c.value, 'suit': c.suit.value} for c in arrangement['bottom']]
         }
         
         data = {

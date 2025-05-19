@@ -244,14 +244,14 @@ class TableauSolver:
 
         return best_arrangement, best_immediate_score, best_future_value
 
-    def get_hand_types(self, arrangement: Dict[str, List[Card]]) -> Dict[str, HandType]:
-        """Get the hand types for each row in the arrangement"""
-        top_type, _ = evaluate_three_card_hand(arrangement['top'])
-        middle_type, _ = evaluate_five_card_hand(arrangement['middle'])
-        bottom_type, _ = evaluate_five_card_hand(arrangement['bottom'])
+    def get_hand_types(self, arrangement: Dict[str, List[Card]]) -> Dict[str, Tuple[HandType, List[Card]]]:
+        """Get the hand types and scoring cards for each row in the arrangement"""
+        top_type, top_scoring = evaluate_three_card_hand(arrangement['top'])
+        middle_type, middle_scoring = evaluate_five_card_hand(arrangement['middle'])
+        bottom_type, bottom_scoring = evaluate_five_card_hand(arrangement['bottom'])
         
         return {
-            'top': top_type,
-            'middle': middle_type,
-            'bottom': bottom_type
+            'top': (top_type, top_scoring),
+            'middle': (middle_type, middle_scoring),
+            'bottom': (bottom_type, bottom_scoring)
         } 
