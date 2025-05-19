@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Start the backend
+cd src
 cd backend
 python3 -m venv venv
 source venv/bin/activate

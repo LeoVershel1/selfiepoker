@@ -8,7 +8,7 @@ const Home: React.FC = () => {
     return (
         <div className="home">
             <div className="home-content">
-                <h1>Poker Hand Solver</h1>
+                <h1>Selfie Poker Solver</h1>
                 <p className="description">
                     Arrange your cards to create the best possible poker hands.
                     Place cards in three rows: top (3 cards), middle (5 cards), and bottom (5 cards).
