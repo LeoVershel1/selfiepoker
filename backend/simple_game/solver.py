@@ -8,6 +8,7 @@ from .poker import (
     HandType, CARD_VALUES
 )
 from functools import lru_cache
+from .cache_manager import SolverCache
 
 @dataclass
 class GameState:
@@ -67,6 +68,7 @@ class TableauSolver:
         self.best_score = 0
         self.best_arrangement = None
         self.best_future_value = 0
+        self.cache = SolverCache()
     
     @lru_cache(maxsize=1024)
     def evaluate_card_value(self, card: Card) -> float:
@@ -136,6 +138,12 @@ class TableauSolver:
         if len(cards) != 13:
             raise ValueError("Must provide exactly 13 cards")
 
+        # Check cache first
+        cached_result = self.cache.get_cached_result(cards)
+        if cached_result is not None:
+            print("Found cached result!")
+            return cached_result
+
         print("Finding best arrangement...")
         best_score = float('-inf')
         best_arrangement = None
@@ -172,6 +180,9 @@ class TableauSolver:
 
         if best_arrangement is None or best_score == float('-inf'):
             raise ValueError("No valid arrangement found that satisfies row strength requirements")
+
+        # Cache the result
+        self.cache.cache_result(cards, best_arrangement, best_immediate_score, best_future_value)
 
         return best_arrangement, best_immediate_score, best_future_value
 
