@@ -1,4 +1,4 @@
-from card import Card, Suit
+from .card import Card, Suit
 from solver import TableauSolver
 from typing import List
 

@@ -1,5 +1,5 @@
 from typing import List, Dict, Tuple
-from card import Card
+from .card import Card
 from enum import Enum
 
 # Card value mapping for easier comparison

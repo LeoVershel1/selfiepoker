@@ -1,11 +1,33 @@
+.tableau-row-container {
+    margin-bottom: 20px;
+}
+
+.row-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.row-score {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.hand-type {
+    font-size: 16px;
+    color: #666;
+    text-transform: capitalize;
+}
+
 .tableau-row {
     display: flex;
-    min-height: 100px;
+    gap: 10px;
+    min-height: 120px;
     padding: 10px;
-    background: #f5f5f5;
+    background: rgba(0, 0, 0, 0.05);
     border-radius: 8px;
-    margin: 10px 0;
-    border: 2px dashed transparent;
 }
 
 .tableau-row.drop-target {
@@ -14,10 +36,9 @@
 }
 
 .empty-slot {
-    width: 60px;
-    height: 90px;
+    width: 80px;
+    height: 120px;
     border: 2px dashed #ccc;
     border-radius: 8px;
-    margin: 5px;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(0, 0, 0, 0.02);
 } 

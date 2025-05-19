@@ -1,5 +1,5 @@
 from typing import List
-from card import Card, Suit
+from .card import Card, Suit
 from solver import TableauSolver
 
 def parse_card(card_str: str) -> Card:

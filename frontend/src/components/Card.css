@@ -1,18 +1,22 @@
 .card {
-    width: 60px;
-    height: 90px;
-    border: 2px solid #ccc;
+    width: 80px;
+    height: 120px;
+    border: 2px solid #333;
     border-radius: 8px;
-    background: white;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    margin: 5px;
+    background: white;
     cursor: move;
     user-select: none;
     position: relative;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .card.red {
@@ -23,17 +27,34 @@
     color: #000;
 }
 
-.card.dragging {
-    opacity: 0.5;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.card.scoring {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
 }
 
 .card-value {
-    font-size: 1.2em;
+    font-size: 24px;
     font-weight: bold;
+    margin-bottom: 5px;
 }
 
 .card-suit {
-    font-size: 1.5em;
-    margin-top: 5px;
+    font-size: 32px;
+}
+
+.card-container {
+    position: relative;
 } 

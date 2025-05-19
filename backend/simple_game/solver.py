@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Set, Optional
 from itertools import combinations
 from dataclasses import dataclass
-from card import Card
+from .card import Card
 from poker import (
     evaluate_five_card_hand, evaluate_three_card_hand,
     calculate_five_card_score, calculate_three_card_score,

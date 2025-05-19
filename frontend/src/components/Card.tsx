@@ -1,20 +1,22 @@
 import React from 'react';
-import { useDrag, DragSourceMonitor } from 'react-dnd';
-import { Card as CardType } from '../types';
+import { Card as CardType, CardSource } from '../types';
 import './Card.css';
 
 interface CardProps {
     card: CardType;
+    onDragStart?: (card: CardType) => void;
+    source?: CardSource;
+    sourceRowId?: string;
+    isScoring?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ card }) => {
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: 'CARD',
-        item: { id: card.id, card },
-        collect: (monitor: DragSourceMonitor) => ({
-            isDragging: !!monitor.isDragging(),
-        }),
-    }));
+const Card: React.FC<CardProps> = ({ card, onDragStart, source = 'hand', sourceRowId, isScoring = false }) => {
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({ card, source, sourceRowId }));
+        if (onDragStart) {
+            onDragStart(card);
+        }
+    };
 
     const getSuitSymbol = (suit: string) => {
         switch (suit) {
@@ -30,9 +32,9 @@ const Card: React.FC<CardProps> = ({ card }) => {
 
     return (
         <div
-            ref={drag}
-            className={`card ${isDragging ? 'dragging' : ''} ${isRed ? 'red' : 'black'}`}
-            style={{ opacity: isDragging ? 0.5 : 1 }}
+            draggable
+            onDragStart={handleDragStart}
+            className={`card ${isRed ? 'red' : 'black'} ${isScoring ? 'scoring' : ''}`}
         >
             <div className="card-value">{card.value}</div>
             <div className="card-suit">{getSuitSymbol(card.suit)}</div>
