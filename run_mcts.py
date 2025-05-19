@@ -1,18 +1,18 @@
-from mcts_agent import train_mcts_agent, load_trained_agent
 import os
+from mcts_agent_new import MCTSAgent, train_mcts_agent
 
 def main():
-    # Create checkpoints directory if it doesn't exist
+    print("Starting MCTS agent training...")
+    print("This will run 1000 episodes")
+    print("Training progress will be shown every 10 episodes")
+    
+    # Create checkpoint directory if it doesn't exist
     checkpoint_dir = "mcts_checkpoints"
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    print("Starting MCTS agent training...")
-    print("This will run 1000 episodes with checkpoints every 100 episodes")
-    print("Training progress will be shown every 10 episodes")
-    
     # Train the agent
     agent = train_mcts_agent(
-        num_episodes=2000,
+        num_episodes=1000,
         save_interval=100,
         checkpoint_dir=checkpoint_dir
     )
@@ -20,22 +20,31 @@ def main():
     print("\nTraining complete!")
     print("Testing the trained agent...")
     
-    # Test the agent
+    # Test the trained agent
     state = agent.agent.reset()
     total_reward = 0
-    moves = 0
+    step_count = 0
     
     while not agent.agent.game_state.check_game_over():
+        step_count += 1
+        print(f"\nStep {step_count}")
+        
+        # Get action from MCTS
         action = agent.get_action(state)
-        state, reward, done, _ = agent.agent.step(action)
+        print(f"MCTS chose action {action}")
+        
+        # Take the action
+        next_state, reward, done, _ = agent.agent.step(action)
+        print(f"Step reward: {reward}, done: {done}")
+        
+        # Update state and reward
+        state = next_state
         total_reward += reward
-        moves += 1
-        print(f"Move {moves}: Action {action}, Reward: {reward:.2f}")
+        print(f"Total reward so far: {total_reward}")
     
-    print(f"\nTest game complete!")
-    print(f"Total moves: {moves}")
-    print(f"Total reward: {total_reward:.2f}")
-    print(f"Average reward per move: {total_reward/moves:.2f}")
+    print(f"\nTest complete!")
+    print(f"Total steps: {step_count}")
+    print(f"Final reward: {total_reward}")
 
 if __name__ == "__main__":
     main() 

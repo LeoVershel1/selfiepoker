@@ -33,10 +33,10 @@ class PokerAgent:
         self.observation_space = self.num_cards + (self.num_slots * self.num_cards)
         self.action_space = 6  # Maximum number of cards in hand
         
-        # Remove reward weights since we're only using score differences
+        # Set reward weights to balance different components
         self.score_weight = 1.0
-        self.hand_upgrade_weight = 0.0
-        self.invalid_ordering_weight = 0.0
+        self.hand_upgrade_weight = 2.0  # Increased to encourage building good hands
+        self.invalid_ordering_weight = 5.0  # Increased to strongly discourage invalid states
     
     def get_observation(self) -> GameObservation:
         """Convert current game state into an observation"""
@@ -109,11 +109,15 @@ class PokerAgent:
         action_vec[action] = 1
         return action_vec
     
-    def _evaluate_hand_strength(self, cards: List[Card]) -> Tuple[HandType, List[Card], float]:
+    def _evaluate_hand_strength(self, cards: List[Card], row_type: str = None) -> Tuple[HandType, List[Card], float]:
         """
-        Evaluate hand strength based on number of cards.
+        Evaluate hand strength based on the row type and number of cards.
         For partial hands, we evaluate what we have so far and their potential.
         Returns (hand_type, best_cards, hand_value)
+        
+        Args:
+            cards: List of cards to evaluate
+            row_type: 'top', 'middle', or 'bottom' to specify which row we're evaluating
         """
         if not cards:
             return HandType.HIGH_CARD, [], 0.0
@@ -127,8 +131,8 @@ class PokerAgent:
         # Sort cards by value for consistent evaluation
         sorted_cards = sorted(cards, key=lambda x: CARD_VALUES[x.value], reverse=True)
         
-        # For 3-card hands (top row), we can only have high card, pair, or three of a kind
-        if len(cards) == 3:
+        # For top row, we can only have high card, pair, or three of a kind
+        if row_type == 'top':
             # Check for three of a kind
             if 3 in value_counts.values():
                 three_value = [v for v, count in value_counts.items() if count == 3][0]
@@ -139,20 +143,30 @@ class PokerAgent:
             if 2 in value_counts.values():
                 pair_value = [v for v, count in value_counts.items() if count == 2][0]
                 pair_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == pair_value]
-                kicker = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value][0]
-                return HandType.ONE_PAIR, pair_cards + [kicker], pair_value * 2 + CARD_VALUES[kicker.value]
+                # For partial hands, we might not have a kicker yet
+                remaining_cards = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value]
+                if remaining_cards:
+                    kicker = remaining_cards[0]
+                    return HandType.ONE_PAIR, pair_cards + [kicker], pair_value * 2 + CARD_VALUES[kicker.value]
+                else:
+                    return HandType.ONE_PAIR, pair_cards, pair_value * 2
             
             # High card
             return HandType.HIGH_CARD, [sorted_cards[0]], CARD_VALUES[sorted_cards[0].value]
         
-        # For 5-card hands (bottom and middle rows)
-        if len(cards) <= 5:
+        # For bottom and middle rows (5-card hands)
+        if row_type in ['bottom', 'middle']:
             # Check for four of a kind
             if 4 in value_counts.values():
                 four_value = [v for v, count in value_counts.items() if count == 4][0]
                 four_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == four_value]
-                kicker = [card for card in sorted_cards if CARD_VALUES[card.value] != four_value][0]
-                return HandType.FOUR_OF_A_KIND, four_cards + [kicker], four_value * 4 + CARD_VALUES[kicker.value]
+                # For partial hands, we might not have a kicker yet
+                remaining_cards = [card for card in sorted_cards if CARD_VALUES[card.value] != four_value]
+                if remaining_cards:
+                    kicker = remaining_cards[0]
+                    return HandType.FOUR_OF_A_KIND, four_cards + [kicker], four_value * 4 + CARD_VALUES[kicker.value]
+                else:
+                    return HandType.FOUR_OF_A_KIND, four_cards, four_value * 4
             
             # Check for full house
             if 3 in value_counts.values() and 2 in value_counts.values():
@@ -166,8 +180,13 @@ class PokerAgent:
             if 3 in value_counts.values():
                 three_value = [v for v, count in value_counts.items() if count == 3][0]
                 three_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == three_value]
-                kickers = [card for card in sorted_cards if CARD_VALUES[card.value] != three_value][:2]
-                return HandType.THREE_OF_A_KIND, three_cards + kickers, three_value * 3 + sum(CARD_VALUES[k.value] for k in kickers)
+                # For partial hands, we might not have kickers yet
+                remaining_cards = [card for card in sorted_cards if CARD_VALUES[card.value] != three_value]
+                if remaining_cards:
+                    kickers = remaining_cards[:2]
+                    return HandType.THREE_OF_A_KIND, three_cards + kickers, three_value * 3 + sum(CARD_VALUES[k.value] for k in kickers)
+                else:
+                    return HandType.THREE_OF_A_KIND, three_cards, three_value * 3
             
             # Check for two pair
             if list(value_counts.values()).count(2) == 2:
@@ -175,15 +194,27 @@ class PokerAgent:
                 pair_cards = []
                 for value in pair_values:
                     pair_cards.extend([card for card in sorted_cards if CARD_VALUES[card.value] == value])
-                kicker = [card for card in sorted_cards if CARD_VALUES[card.value] not in pair_values][0]
-                return HandType.TWO_PAIR, pair_cards + [kicker], pair_values[0] * 2 + pair_values[1] * 2 + CARD_VALUES[kicker.value]
+                
+                # For partial hands, we might not have a kicker yet
+                remaining_cards = [card for card in sorted_cards if CARD_VALUES[card.value] not in pair_values]
+                if remaining_cards:
+                    kicker = remaining_cards[0]
+                    return HandType.TWO_PAIR, pair_cards + [kicker], pair_values[0] * 2 + pair_values[1] * 2 + CARD_VALUES[kicker.value]
+                else:
+                    # If we don't have a kicker yet, just return the pairs
+                    return HandType.TWO_PAIR, pair_cards, pair_values[0] * 2 + pair_values[1] * 2
             
             # Check for one pair
             if 2 in value_counts.values():
                 pair_value = [v for v, count in value_counts.items() if count == 2][0]
                 pair_cards = [card for card in sorted_cards if CARD_VALUES[card.value] == pair_value]
-                kickers = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value][:3]
-                return HandType.ONE_PAIR, pair_cards + kickers, pair_value * 2 + sum(CARD_VALUES[k.value] for k in kickers)
+                # For partial hands, we might not have kickers yet
+                remaining_cards = [card for card in sorted_cards if CARD_VALUES[card.value] != pair_value]
+                if remaining_cards:
+                    kickers = remaining_cards[:3]
+                    return HandType.ONE_PAIR, pair_cards + kickers, pair_value * 2 + sum(CARD_VALUES[k.value] for k in kickers)
+                else:
+                    return HandType.ONE_PAIR, pair_cards, pair_value * 2
             
             # Check for potential flush
             suit_counts = {}
@@ -213,6 +244,7 @@ class PokerAgent:
             # High card
             return HandType.HIGH_CARD, [sorted_cards[0]], CARD_VALUES[sorted_cards[0].value]
         
+        # If no row type specified, default to high card
         return HandType.HIGH_CARD, [sorted_cards[0]], CARD_VALUES[sorted_cards[0].value]
     
     def _check_invalid_ordering(self, tableau: Tableau) -> Tuple[bool, float]:
@@ -222,38 +254,39 @@ class PokerAgent:
         Returns a tuple of (is_invalid, penalty_strength)
         """
         # Get the current hand types for each row
-        bottom_type, _, _ = self._evaluate_hand_strength(tableau.bottom_row)
-        middle_type, _, _ = self._evaluate_hand_strength(tableau.middle_row)
-        top_type, _, _ = self._evaluate_hand_strength(tableau.top_row)
+        bottom_type, _, bottom_value = self._evaluate_hand_strength(tableau.bottom_row, 'bottom')
+        middle_type, _, middle_value = self._evaluate_hand_strength(tableau.middle_row, 'middle')
+        top_type, _, top_value = self._evaluate_hand_strength(tableau.top_row, 'top')
         
         # If any row is empty, we can't have invalid ordering yet
         if not tableau.bottom_row or not tableau.middle_row or not tableau.top_row:
             return False, 0.0
         
-        # Check if current ordering is invalid
-        if bottom_type.value <= middle_type.value or middle_type.value <= top_type.value:
-            # Calculate penalty strength based on how bad the violation is
-            if bottom_type.value <= middle_type.value:
-                penalty = (middle_type.value - bottom_type.value + 1) * 5
-            else:
-                penalty = (top_type.value - middle_type.value + 1) * 5
-            return True, penalty
-        
         # For partial hands, we need to consider potential future improvements
         # For example, if bottom row has a pair and middle row has a pair,
         # but bottom row has higher cards, it might still be valid
         if len(tableau.bottom_row) == len(tableau.middle_row):
-            # If same number of cards, compare the actual card values
-            bottom_high = max(CARD_VALUES[card.value] for card in tableau.bottom_row)
-            middle_high = max(CARD_VALUES[card.value] for card in tableau.middle_row)
-            if bottom_high <= middle_high:
-                return True, 3.0  # Penalty for having lower cards in bottom row
+            # If same number of cards, compare the hand types and values
+            if bottom_type.value < middle_type.value:
+                return True, 5.0  # Penalty for having weaker hand type in bottom row
+            elif bottom_type.value == middle_type.value and bottom_value < middle_value:
+                return True, 3.0  # Smaller penalty for having lower value in bottom row
         
         if len(tableau.middle_row) == len(tableau.top_row):
-            middle_high = max(CARD_VALUES[card.value] for card in tableau.middle_row)
-            top_high = max(CARD_VALUES[card.value] for card in tableau.top_row)
-            if middle_high <= top_high:
-                return True, 3.0  # Penalty for having lower cards in middle row
+            if middle_type.value < top_type.value:
+                return True, 3.0  # Penalty for having weaker hand type in middle row
+            elif middle_type.value == top_type.value and middle_value < top_value:
+                return True, 2.0  # Smaller penalty for having lower value in middle row
+        
+        # Only consider it invalid if we have complete hands and they're in wrong order
+        if len(tableau.bottom_row) == 5 and len(tableau.middle_row) == 5 and len(tableau.top_row) == 3:
+            if bottom_type.value <= middle_type.value or middle_type.value <= top_type.value:
+                # Calculate penalty strength based on how bad the violation is
+                if bottom_type.value <= middle_type.value:
+                    penalty = (middle_type.value - bottom_type.value + 1) * 10
+                else:
+                    penalty = (top_type.value - middle_type.value + 1) * 5
+                return True, penalty
         
         return False, 0.0
     
@@ -267,8 +300,8 @@ class PokerAgent:
         
         # Check bottom row (full poker hands)
         if len(new_tableau.bottom_row) > len(old_tableau.bottom_row):
-            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.bottom_row)
-            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.bottom_row)
+            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.bottom_row, 'bottom')
+            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.bottom_row, 'bottom')
             
             # Major upgrade (e.g., high card -> pair -> three of a kind)
             if new_type.value > old_type.value:
@@ -318,8 +351,8 @@ class PokerAgent:
         
         # Similar logic for middle row (with lower rewards)
         if len(new_tableau.middle_row) > len(old_tableau.middle_row):
-            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.middle_row)
-            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.middle_row)
+            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.middle_row, 'middle')
+            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.middle_row, 'middle')
             
             if new_type.value > old_type.value:
                 if new_type == HandType.FOUR_OF_A_KIND:
@@ -366,8 +399,8 @@ class PokerAgent:
         
         # Top row rewards (only three-card hands)
         if len(new_tableau.top_row) > len(old_tableau.top_row):
-            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.top_row)
-            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.top_row)
+            old_type, _, old_value = self._evaluate_hand_strength(old_tableau.top_row, 'top')
+            new_type, _, new_value = self._evaluate_hand_strength(new_tableau.top_row, 'top')
             
             # For top row, we only consider three-card hands
             if new_type.value > old_type.value:
@@ -391,27 +424,55 @@ class PokerAgent:
     
     def get_reward(self, old_state: GameObservation, new_state: GameObservation) -> float:
         """
-        Calculate reward based solely on score differences.
-        Returns a large negative reward for invalid states.
+        Calculate reward based on multiple factors:
+        1. Score differences for complete rounds
+        2. Hand improvements in each row
+        3. Penalties for invalid states
+        4. Potential scores for partial hands
         """
         # Check for invalid hand ordering (game over)
         if self.game_state.check_game_over():
+            print("DEBUG: Game over detected in get_reward")
             return -100
+        
+        # Initialize reward
+        reward = 0.0
+        
+        # Check for invalid ordering
+        is_invalid, penalty = self._check_invalid_ordering(new_state.tableau)
+        if is_invalid:
+            print(f"DEBUG: Invalid ordering detected, penalty: {penalty}")
+            return -penalty
+        
+        # Calculate hand upgrade reward
+        hand_upgrade_reward = self._get_hand_upgrade_reward(old_state.tableau, new_state.tableau)
+        print(f"DEBUG: Hand upgrade reward: {hand_upgrade_reward}")
+        reward += hand_upgrade_reward
         
         # Score difference (if round is complete)
         if new_state.tableau.is_complete():
             try:
                 score, _, is_game_over = self.game_state.evaluate_round()
                 if is_game_over:
+                    print(f"DEBUG: Invalid ordering detected in get_reward, score: {score}")
                     return -100  # Game over due to invalid ordering
-                return score  # Direct score as reward
+                print(f"DEBUG: Round complete, score: {score}")
+                reward += score  # Add score to total reward
             except ValueError as e:
                 if "Cannot evaluate incomplete round" in str(e):
-                    return 0  # Not an error, just incomplete
-                raise e  # Re-raise other errors
+                    print("DEBUG: Incomplete round, calculating potential score")
+                    # Calculate potential score for incomplete round
+                    potential_score = 0
+                    for row in [new_state.tableau.bottom_row, new_state.tableau.middle_row, new_state.tableau.top_row]:
+                        if row:
+                            hand_type, _, hand_value = self._evaluate_hand_strength(row)
+                            potential_score += hand_value
+                    reward += potential_score / 100  # Scale down potential score
+                else:
+                    raise e
         
-        # For incomplete rounds, return 0
-        return 0.0
+        print(f"DEBUG: Total reward: {reward}")
+        return reward
     
     def step(self, action: int) -> Tuple[GameObservation, float, bool, dict]:
         """
