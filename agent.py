@@ -33,10 +33,10 @@ class PokerAgent:
         self.observation_space = self.num_cards + (self.num_slots * self.num_cards)
         self.action_space = 6  # Maximum number of cards in hand
         
-        # Reward weights
-        self.score_weight = 0.7
-        self.hand_upgrade_weight = 0.2
-        self.invalid_ordering_weight = 0.1
+        # Remove reward weights since we're only using score differences
+        self.score_weight = 1.0
+        self.hand_upgrade_weight = 0.0
+        self.invalid_ordering_weight = 0.0
     
     def get_observation(self) -> GameObservation:
         """Convert current game state into an observation"""
@@ -391,35 +391,27 @@ class PokerAgent:
     
     def get_reward(self, old_state: GameObservation, new_state: GameObservation) -> float:
         """
-        Calculate reward based on:
-        1. Score difference (major component)
-        2. Hand upgrades (minor component)
-        3. Penalties for invalid ordering
+        Calculate reward based solely on score differences.
+        Returns a large negative reward for invalid states.
         """
-        reward = 0
-        
         # Check for invalid hand ordering (game over)
         if self.game_state.check_game_over():
             return -100
         
-        # Check for invalid partial hands
-        is_invalid, penalty = self._check_invalid_ordering(new_state.tableau)
-        if is_invalid:
-            reward -= penalty * self.invalid_ordering_weight
-        
         # Score difference (if round is complete)
         if new_state.tableau.is_complete():
             try:
-                score, _ = self.game_state.evaluate_round()
-                reward += score * self.score_weight
-            except ValueError:
-                pass
+                score, _, is_game_over = self.game_state.evaluate_round()
+                if is_game_over:
+                    return -100  # Game over due to invalid ordering
+                return score  # Direct score as reward
+            except ValueError as e:
+                if "Cannot evaluate incomplete round" in str(e):
+                    return 0  # Not an error, just incomplete
+                raise e  # Re-raise other errors
         
-        # Hand upgrade rewards
-        hand_upgrade_reward = self._get_hand_upgrade_reward(old_state.tableau, new_state.tableau)
-        reward += hand_upgrade_reward * self.hand_upgrade_weight
-        
-        return reward
+        # For incomplete rounds, return 0
+        return 0.0
     
     def step(self, action: int) -> Tuple[GameObservation, float, bool, dict]:
         """
@@ -451,11 +443,15 @@ class PokerAgent:
             if self.game_state.tableau.is_complete():
                 try:
                     # Try to evaluate the round
-                    score, scoring_cards = self.game_state.evaluate_round()
+                    score, scoring_cards, is_game_over = self.game_state.evaluate_round()
+                    if is_game_over:
+                        return self.get_observation(), -100, True, {"error": "Invalid hand ordering"}
                     self.game_state.prepare_next_round(scoring_cards)
                 except ValueError as e:
-                    # If evaluation fails, game is over
-                    return self.get_observation(), -100, True, {"error": str(e)}
+                    if "Cannot evaluate incomplete round" in str(e):
+                        pass  # Not an error, just incomplete
+                    else:
+                        return self.get_observation(), -100, True, {"error": str(e)}
             
             # Check if game is over
             done = self.game_state.check_game_over()

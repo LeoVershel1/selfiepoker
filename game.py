@@ -100,8 +100,11 @@ class GameState:
         if self.unused_draw_pile:
             self.hand.append(self.unused_draw_pile.pop())
 
-    def evaluate_round(self) -> Tuple[int, List[Card]]:
-        """Evaluate the current round and return (score, cards_to_remove)"""
+    def evaluate_round(self) -> Tuple[int, List[Card], bool]:
+        """
+        Evaluate the current round and return (score, cards_to_remove, is_game_over)
+        Returns game_over=True if hands are in invalid order
+        """
         if not self.tableau.is_complete():
             raise ValueError("Cannot evaluate incomplete round")
 
@@ -110,16 +113,14 @@ class GameState:
         middle_hand_type, middle_scoring_cards = evaluate_five_card_hand(self.tableau.middle_row)
         bottom_hand_type, bottom_scoring_cards = evaluate_five_card_hand(self.tableau.bottom_row)
 
-        # Calculate scores (for scoring only, not for validation)
+        # Check if hands are in correct order (bottom > middle > top)
+        if bottom_hand_type.value <= middle_hand_type.value or middle_hand_type.value <= top_hand_type.value:
+            return 0, [], True  # Game over, no score, no cards to remove
+
+        # Calculate scores
         top_score = calculate_three_card_score(top_hand_type, top_scoring_cards)
         middle_score = calculate_five_card_score(middle_hand_type, middle_scoring_cards, False)
         bottom_score = calculate_five_card_score(bottom_hand_type, bottom_scoring_cards, True)
-
-        # Check if hands are in correct order (bottom > middle > top)
-        if bottom_hand_type.value <= middle_hand_type.value:
-            raise ValueError(f"Bottom row ({bottom_hand_type.name}) must be stronger than middle row ({middle_hand_type.name})")
-        if middle_hand_type.value <= top_hand_type.value:
-            raise ValueError(f"Middle row ({middle_hand_type.name}) must be stronger than top row ({top_hand_type.name})")
 
         total_score = top_score + middle_score + bottom_score
         self.score += total_score
@@ -127,7 +128,7 @@ class GameState:
         # Collect all scoring cards
         scoring_cards = top_scoring_cards + middle_scoring_cards + bottom_scoring_cards
 
-        return total_score, scoring_cards
+        return total_score, scoring_cards, False
 
     def prepare_next_round(self, scoring_cards: List[Card]):
         """Prepare the next round by redistributing cards"""
@@ -167,14 +168,20 @@ class GameState:
         if not self.tableau.is_complete():
             return False
 
-        try:
-            # Try to evaluate the round - if it raises ValueError, game is over
-            self.evaluate_round()
-            return False
-        except ValueError as e:
-            if str(e) == "Hands are not in correct order":
+        # Check current hand ordering
+        if len(self.tableau.bottom_row) > 0 and len(self.tableau.middle_row) > 0:
+            bottom_type, _, _ = evaluate_five_card_hand(self.tableau.bottom_row)
+            middle_type, _, _ = evaluate_five_card_hand(self.tableau.middle_row)
+            if bottom_type.value <= middle_type.value:
                 return True
-            raise e
+
+        if len(self.tableau.middle_row) > 0 and len(self.tableau.top_row) > 0:
+            middle_type, _, _ = evaluate_five_card_hand(self.tableau.middle_row)
+            top_type, _, _ = evaluate_three_card_hand(self.tableau.top_row)
+            if middle_type.value <= top_type.value:
+                return True
+
+        return False
 
 def main():
     game = GameState()

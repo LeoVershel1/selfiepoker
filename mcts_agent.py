@@ -49,8 +49,8 @@ class MCTSNode:
 class MCTSAgent:
     def __init__(
         self,
-        exploration_weight: float = 2.5,
-        max_simulations: int = 2000,
+        exploration_weight: float = 2.0,
+        max_simulations: int = 1500,
         max_depth: int = 39,
         num_parallel: int = None,
         discount_factor: float = 0.95  # Added discount factor for rewards
@@ -182,18 +182,24 @@ class MCTSAgent:
             # Get the current position in the tableau
             position = state.tableau.current_placement_index
             
-            # More balanced action selection strategy
+            # More balanced action selection strategy with better exploration
             if position < 5:  # Bottom row
+                # Sort actions by card value
                 action_values = [
                     (i, CARD_VALUES[state.hand[i].value])
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1], reverse=True)
-                # 60% chance to choose from top 3 cards
-                if random.random() < 0.6 and len(action_values) >= 3:
-                    action = random.choice(action_values[:3])[0]
-                else:
+                
+                # 40% chance to choose randomly for better exploration
+                if random.random() < 0.4:
                     action = random.choice(valid_actions)
+                else:
+                    # 60% chance to choose from top 3 cards
+                    if len(action_values) >= 3:
+                        action = random.choice(action_values[:3])[0]
+                    else:
+                        action = random.choice(valid_actions)
             
             elif position < 10:  # Middle row
                 action_values = [
@@ -201,12 +207,17 @@ class MCTSAgent:
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1])
-                # 50% chance to choose from middle cards
-                if random.random() < 0.5 and len(action_values) >= 3:
-                    mid_start = len(action_values) // 3
-                    action = random.choice(action_values[mid_start:mid_start+3])[0]
-                else:
+                
+                # 50% chance to choose randomly
+                if random.random() < 0.5:
                     action = random.choice(valid_actions)
+                else:
+                    # Choose from middle cards
+                    if len(action_values) >= 3:
+                        mid_start = len(action_values) // 3
+                        action = random.choice(action_values[mid_start:mid_start+3])[0]
+                    else:
+                        action = random.choice(valid_actions)
             
             else:  # Top row
                 action_values = [
@@ -214,11 +225,16 @@ class MCTSAgent:
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1])
-                # 60% chance to choose from bottom 3 cards
-                if random.random() < 0.6 and len(action_values) >= 3:
-                    action = random.choice(action_values[:3])[0]
-                else:
+                
+                # 40% chance to choose randomly
+                if random.random() < 0.4:
                     action = random.choice(valid_actions)
+                else:
+                    # Choose from bottom 3 cards
+                    if len(action_values) >= 3:
+                        action = random.choice(action_values[:3])[0]
+                    else:
+                        action = random.choice(valid_actions)
             
             # Take action
             sim_agent.game_state.tableau = state.tableau
@@ -235,7 +251,14 @@ class MCTSAgent:
             if done:
                 # Add terminal state reward
                 if state.tableau.is_complete():
-                    total_reward += 10.0 * discount  # Bonus for completing the tableau
+                    try:
+                        score, _, is_game_over = sim_agent.game_state.evaluate_round()
+                        if is_game_over:
+                            total_reward -= 50.0 * discount  # Penalty for invalid ordering
+                        else:
+                            total_reward += score * discount  # Reward based on actual score
+                    except ValueError:
+                        pass  # Incomplete round, no additional reward
                 break
         
         return total_reward
@@ -244,8 +267,9 @@ class MCTSAgent:
         """Backpropagate the value up the tree with improved value handling"""
         while node is not None:
             node.visits += 1
-            # Use a more stable update formula
-            node.value = node.value + (value - node.value) / node.visits
+            # Use a more stable update formula with momentum
+            alpha = 0.1  # Learning rate
+            node.value = (1 - alpha) * node.value + alpha * value
             node = node.parent
     
     def _ucb_select(self, node: MCTSNode) -> MCTSNode:
@@ -284,7 +308,7 @@ class MCTSAgent:
         self.tree_cache = state['tree_cache']
 
 def train_mcts_agent(
-    num_episodes: int = 10000,
+    num_episodes: int = 2000,
     save_interval: int = 100,
     checkpoint_dir: str = "mcts_checkpoints"
 ) -> MCTSAgent:
