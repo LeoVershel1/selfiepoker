@@ -1,7 +1,7 @@
 import unittest
-from ..src.backend.simple_game.solver import TableauSolver
-from ..src.backend.simple_game.card import Card, Suit
-from ..src.backend.simple_game.poker import HandType
+from src.backend.simple_game.solver import TableauSolver
+from src.backend.simple_game.card import Card, Suit
+from src.backend.simple_game.poker import HandType
 
 class TestTableauSolver(unittest.TestCase):
     def setUp(self):
