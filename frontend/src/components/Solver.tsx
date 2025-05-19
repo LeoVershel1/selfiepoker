@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Suit, Value, OptimalArrangementResult } from '../types';
 import { findOptimalArrangement } from '../utils/scoring';
+import CardComponent from './Card';
 import './Solver.css';
 
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
@@ -14,6 +15,13 @@ const Solver: React.FC = () => {
 
   const handleCardSelect = (rank: string, suit: Suit) => {
     if (selectedCards.length >= 13) return;
+    
+    // Check if card is already selected
+    const isDuplicate = selectedCards.some(
+      card => card.rank === rank && card.suit === suit
+    );
+    
+    if (isDuplicate) return;
     
     const newCard: Card = {
       rank,
@@ -81,13 +89,11 @@ const Solver: React.FC = () => {
         <h2>Selected Cards ({selectedCards.length}/13)</h2>
         <div className="selected-cards-grid">
           {selectedCards.map((card, index) => (
-            <div
+            <CardComponent
               key={index}
-              className={`selected-card ${card.suit === '♥' || card.suit === '♦' ? 'red' : 'black'}`}
-              onClick={() => handleRemoveCard(index)}
-            >
-              {card.rank}{card.suit}
-            </div>
+              card={card}
+              source="hand"
+            />
           ))}
         </div>
       </div>
@@ -107,27 +113,42 @@ const Solver: React.FC = () => {
           <div className="arrangement-grid">
             <div className="arrangement-row">
               <h3>Top Row</h3>
-              {optimalArrangement.arrangement.top.map((card, index) => (
-                <div key={index} className={`solution-card ${card.suit === '♥' || card.suit === '♦' ? 'red' : 'black'}`}>
-                  {card.rank || RANKS[card.value - 1]}{card.suit}
-                </div>
-              ))}
+              <div className="tableau-row">
+                {optimalArrangement.arrangement.top.map((card, index) => (
+                  <CardComponent
+                    key={index}
+                    card={card}
+                    source="tableau"
+                    sourceRowId="top"
+                  />
+                ))}
+              </div>
             </div>
             <div className="arrangement-row">
               <h3>Middle Row</h3>
-              {optimalArrangement.arrangement.middle.map((card, index) => (
-                <div key={index} className={`solution-card ${card.suit === '♥' || card.suit === '♦' ? 'red' : 'black'}`}>
-                  {card.rank || RANKS[card.value - 1]}{card.suit}
-                </div>
-              ))}
+              <div className="tableau-row">
+                {optimalArrangement.arrangement.middle.map((card, index) => (
+                  <CardComponent
+                    key={index}
+                    card={card}
+                    source="tableau"
+                    sourceRowId="middle"
+                  />
+                ))}
+              </div>
             </div>
             <div className="arrangement-row">
               <h3>Bottom Row</h3>
-              {optimalArrangement.arrangement.bottom.map((card, index) => (
-                <div key={index} className={`solution-card ${card.suit === '♥' || card.suit === '♦' ? 'red' : 'black'}`}>
-                  {card.rank || RANKS[card.value - 1]}{card.suit}
-                </div>
-              ))}
+              <div className="tableau-row">
+                {optimalArrangement.arrangement.bottom.map((card, index) => (
+                  <CardComponent
+                    key={index}
+                    card={card}
+                    source="tableau"
+                    sourceRowId="bottom"
+                  />
+                ))}
+              </div>
             </div>
           </div>
           <div className="score-details">

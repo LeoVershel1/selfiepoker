@@ -19,16 +19,43 @@ const CardComponent: React.FC<CardProps> = ({ card, onDragStart, source = 'hand'
     };
 
     const getSuitSymbol = (suit: string) => {
-        switch (suit) {
-            case 'hearts': return '♥';
-            case 'diamonds': return '♦';
-            case 'clubs': return '♣';
-            case 'spades': return '♠';
-            default: return '';
+        // Handle both string and enum formats
+        const suitLower = suit.toLowerCase();
+        switch (suitLower) {
+            case 'hearts':
+            case '♥':
+                return '♥';
+            case 'diamonds':
+            case '♦':
+                return '♦';
+            case 'clubs':
+            case '♣':
+                return '♣';
+            case 'spades':
+            case '♠':
+                return '♠';
+            default:
+                return suit; // Return as is if it's already a symbol
         }
     };
 
-    const isRed = card.suit === '♥' || card.suit === '♦';
+    const getCardValue = (card: CardType) => {
+        if (typeof card.value === 'number') {
+            // Convert number to rank
+            switch (card.value) {
+                case 1: return 'A';
+                case 11: return 'J';
+                case 12: return 'Q';
+                case 13: return 'K';
+                default: return card.value.toString();
+            }
+        }
+        return card.value;
+    };
+
+    const isRed = card.suit === '♥' || card.suit === '♦' || 
+                 card.suit.toLowerCase() === 'hearts' || 
+                 card.suit.toLowerCase() === 'diamonds';
 
     return (
         <div
@@ -36,7 +63,7 @@ const CardComponent: React.FC<CardProps> = ({ card, onDragStart, source = 'hand'
             onDragStart={handleDragStart}
             className={`card ${isRed ? 'red' : 'black'} ${isScoring ? 'scoring' : ''}`}
         >
-            <div className="card-value">{card.value}</div>
+            <div className="card-value">{getCardValue(card)}</div>
             <div className="card-suit">{getSuitSymbol(card.suit)}</div>
         </div>
     );
