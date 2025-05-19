@@ -1,0 +1,111 @@
+# Selfie Poker
+
+A modern web application that simplies 'selfie poker' gameplay. Built with React (TypeScript) frontend and Flask backend.
+
+## Project Structure
+
+```
+src/
+├── backend/         # Flask backend server
+│   ├── app.py      # Main Flask application
+│   ├── simple_game/ # Game logic implementation
+│   └── requirements.txt
+└── frontend/       # React TypeScript frontend
+    ├── src/        # Source code
+    ├── public/     # Static assets
+    └── package.json
+```
+
+## Prerequisites
+
+- Python 3.x
+- Node.js and npm
+- Modern web browser
+
+## Backend Setup
+
+1. Navigate to the backend directory:
+   ```bash
+   cd src/backend
+   ```
+
+2. Create and activate a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run the Flask server:
+   ```bash
+   python app.py
+   ```
+
+The backend server will start on `http://localhost:5000`.
+
+## Frontend Setup
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd src/frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm start
+   ```
+
+The frontend development server will start on `http://localhost:3000`.
+
+## Technologies Used
+
+### Backend
+- Flask 3.0.2
+- Flask-CORS 4.0.0
+
+### Frontend
+- React 19.1.0
+- TypeScript 4.9.5
+- React Router DOM 6.22.3
+- React DnD (Drag and Drop) 16.0.1
+
+## Development
+
+- The frontend is built with React and TypeScript, providing type safety and better development experience
+- The backend uses Flask for handling API requests and game logic
+- React DnD is used for drag-and-drop functionality in the game interface
+
+## Testing
+
+### Frontend Testing
+```bash
+cd src/frontend
+npm test
+```
+
+## Building for Production
+
+### Frontend
+```bash
+cd src/frontend
+npm run build
+```
+
+This will create an optimized production build in the `build` directory.
+
+## License
+
+MIT thing 
+
+## Contributing
+
+Thanks to cursor
