@@ -10,6 +10,8 @@ from simple_game.poker import (
 from simple_game.card import Card as PyCard
 from typing import List, Dict
 import logging
+from simple_game.solver import TableauSolver
+from simple_game.card import Card, Suit
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -87,6 +89,49 @@ def evaluate_tableau():
     }
     logger.debug(f"Sending response: {response}")
     return jsonify(response)
+
+@app.route('/api/find-optimal-arrangement', methods=['POST'])
+def find_optimal_arrangement():
+    data = request.json
+    logger.debug(f"Received optimal arrangement request: {data}")
+    
+    try:
+        # Convert cards to Python Card objects
+        cards = [convert_to_pycard(card) for card in data['cards']]
+        
+        # Use solver to find best arrangement
+        solver = TableauSolver()
+        arrangement, immediate_score, future_value = solver.find_best_arrangement(cards)
+        hand_types = solver.get_hand_types(arrangement)
+        
+        # Convert arrangement back to frontend format
+        response = {
+            'arrangement': {
+                'top': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
+                       for card in arrangement['top']],
+                'middle': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
+                          for card in arrangement['middle']],
+                'bottom': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
+                          for card in arrangement['bottom']]
+            },
+            'scores': {
+                'immediate': immediate_score,
+                'future': future_value,
+                'total': (immediate_score * 0.7) + (future_value * 0.3)
+            },
+            'hand_types': {
+                'top': str(hand_types['top']),
+                'middle': str(hand_types['middle']),
+                'bottom': str(hand_types['bottom'])
+            }
+        }
+        
+        logger.debug(f"Sending optimal arrangement response: {response}")
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Error finding optimal arrangement: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000) 

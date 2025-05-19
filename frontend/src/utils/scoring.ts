@@ -11,6 +11,24 @@ interface TableauScoringResult {
     total_score: number;
 }
 
+interface OptimalArrangementResult {
+    arrangement: {
+        top: Card[];
+        middle: Card[];
+        bottom: Card[];
+    };
+    scores: {
+        immediate: number;
+        future: number;
+        total: number;
+    };
+    hand_types: {
+        top: string;
+        middle: string;
+        bottom: string;
+    };
+}
+
 // Helper function to get numeric value of a card
 const getCardValue = (value: string): number => {
     switch (value) {
@@ -102,5 +120,32 @@ export const evaluateTableau = async (tableau: { [key: string]: TableauRow }): P
     } catch (error) {
         console.error('Error evaluating tableau:', error);
         return { row_scores: {}, total_score: 0 };
+    }
+};
+
+// Find the optimal arrangement for a set of cards
+export const findOptimalArrangement = async (cards: Card[]): Promise<OptimalArrangementResult> => {
+    try {
+        console.log('Finding optimal arrangement for cards:', cards);
+        const response = await fetch('http://localhost:5000/api/find-optimal-arrangement', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cards }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to find optimal arrangement:', errorText);
+            throw new Error(`Failed to find optimal arrangement: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('Optimal arrangement result:', result);
+        return result;
+    } catch (error) {
+        console.error('Error finding optimal arrangement:', error);
+        throw error;
     }
 }; 

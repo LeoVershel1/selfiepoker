@@ -100,4 +100,49 @@ h2 {
 
 .new-hand-button:hover {
     background-color: #388E3C;
+}
+
+.optimal-arrangement {
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.optimal-arrangement h2 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.score-comparison {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.score-comparison div {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.score-comparison div:last-child {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.optimal-arrangement .tableau-row {
+    background-color: #fff;
+    margin-bottom: 0.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.optimal-arrangement .tableau-row:last-child {
+    margin-bottom: 0;
 } 

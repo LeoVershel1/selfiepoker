@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card as CardType, Tableau, GameState } from '../types';
-import { evaluateTableau } from '../utils/scoring';
+import { evaluateTableau, findOptimalArrangement } from '../utils/scoring';
 import TableauRow from './TableauRow';
 import Card from './Card';
 import './Game.css';
@@ -51,6 +51,12 @@ const Game: React.FC = () => {
     const [scoringResults, setScoringResults] = useState<{
         rowScores: { [key: string]: { score: number; scoringCards: CardType[]; handType: string } };
         totalScore: number;
+    } | null>(null);
+
+    const [optimalArrangement, setOptimalArrangement] = useState<{
+        arrangement: { [key: string]: CardType[] };
+        scores: { immediate: number; future: number; total: number };
+        hand_types: { [key: string]: string };
     } | null>(null);
 
     const [isScoringComplete, setIsScoringComplete] = useState(false);
@@ -125,6 +131,16 @@ const Game: React.FC = () => {
                 },
                 totalScore: results.total_score
             });
+
+            // Find optimal arrangement
+            const allCards = [
+                ...gameState.tableau.top.cards,
+                ...gameState.tableau.middle.cards,
+                ...gameState.tableau.bottom.cards
+            ];
+            const optimal = await findOptimalArrangement(allCards);
+            setOptimalArrangement(optimal);
+            
             setIsScoringComplete(true);
         } catch (error) {
             console.error('Error submitting tableau:', error);
@@ -187,7 +203,7 @@ const Game: React.FC = () => {
             </div>
             
             <div className="tableau">
-                <h2>Tableau</h2>
+                <h2>Your Tableau</h2>
                 <TableauRow
                     row={gameState.tableau.top}
                     rowId="top"
@@ -213,6 +229,41 @@ const Game: React.FC = () => {
                     handType={scoringResults?.rowScores?.bottom?.handType || ''}
                 />
             </div>
+
+            {optimalArrangement && (
+                <div className="optimal-arrangement">
+                    <h2>Optimal Arrangement</h2>
+                    <div className="score-comparison">
+                        <div>Your Score: {scoringResults?.totalScore || 0}</div>
+                        <div>Optimal Score: {optimalArrangement.scores.immediate}</div>
+                        <div>Potential Improvement: +{optimalArrangement.scores.immediate - (scoringResults?.totalScore || 0)}</div>
+                    </div>
+                    <TableauRow
+                        row={{ cards: optimalArrangement.arrangement.top, maxCards: 3 }}
+                        rowId="top"
+                        onCardDrop={() => {}}
+                        scoringCards={[]}
+                        rowScore={0}
+                        handType={optimalArrangement.hand_types.top}
+                    />
+                    <TableauRow
+                        row={{ cards: optimalArrangement.arrangement.middle, maxCards: 5 }}
+                        rowId="middle"
+                        onCardDrop={() => {}}
+                        scoringCards={[]}
+                        rowScore={0}
+                        handType={optimalArrangement.hand_types.middle}
+                    />
+                    <TableauRow
+                        row={{ cards: optimalArrangement.arrangement.bottom, maxCards: 5 }}
+                        rowId="bottom"
+                        onCardDrop={() => {}}
+                        scoringCards={[]}
+                        rowScore={0}
+                        handType={optimalArrangement.hand_types.bottom}
+                    />
+                </div>
+            )}
 
             <div className="hand">
                 <h2>Your Hand</h2>
