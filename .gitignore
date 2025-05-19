@@ -50,4 +50,5 @@ coverage.xml
 # Project specific
 checkpoints/
 mcts_checkpoints/
+src/backend/results
 *.pkl 
