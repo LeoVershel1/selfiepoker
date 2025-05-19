@@ -1,0 +1,39 @@
+.card {
+    width: 60px;
+    height: 90px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    cursor: move;
+    user-select: none;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card.red {
+    color: #d40000;
+}
+
+.card.black {
+    color: #000;
+}
+
+.card.dragging {
+    opacity: 0.5;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-value {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.card-suit {
+    font-size: 1.5em;
+    margin-top: 5px;
+} 

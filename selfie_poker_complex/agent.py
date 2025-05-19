@@ -432,7 +432,7 @@ class PokerAgent:
         """
         # Check for invalid hand ordering (game over)
         if self.game_state.check_game_over():
-            print("DEBUG: Game over detected in get_reward")
+            #print("DEBUG: Game over detected in get_reward")
             return -100
         
         # Initialize reward
@@ -441,12 +441,12 @@ class PokerAgent:
         # Check for invalid ordering
         is_invalid, penalty = self._check_invalid_ordering(new_state.tableau)
         if is_invalid:
-            print(f"DEBUG: Invalid ordering detected, penalty: {penalty}")
+            #print(f"DEBUG: Invalid ordering detected, penalty: {penalty}")
             return -penalty
         
         # Calculate hand upgrade reward
         hand_upgrade_reward = self._get_hand_upgrade_reward(old_state.tableau, new_state.tableau)
-        print(f"DEBUG: Hand upgrade reward: {hand_upgrade_reward}")
+        #print(f"DEBUG: Hand upgrade reward: {hand_upgrade_reward}")
         reward += hand_upgrade_reward
         
         # Score difference (if round is complete)
@@ -454,13 +454,13 @@ class PokerAgent:
             try:
                 score, _, is_game_over = self.game_state.evaluate_round()
                 if is_game_over:
-                    print(f"DEBUG: Invalid ordering detected in get_reward, score: {score}")
+                    #print(f"DEBUG: Invalid ordering detected in get_reward, score: {score}")
                     return -100  # Game over due to invalid ordering
-                print(f"DEBUG: Round complete, score: {score}")
+                #print(f"DEBUG: Round complete, score: {score}")
                 reward += score  # Add score to total reward
             except ValueError as e:
                 if "Cannot evaluate incomplete round" in str(e):
-                    print("DEBUG: Incomplete round, calculating potential score")
+                    #print("DEBUG: Incomplete round, calculating potential score")
                     # Calculate potential score for incomplete round
                     potential_score = 0
                     for row in [new_state.tableau.bottom_row, new_state.tableau.middle_row, new_state.tableau.top_row]:
@@ -471,7 +471,7 @@ class PokerAgent:
                 else:
                     raise e
         
-        print(f"DEBUG: Total reward: {reward}")
+        #print(f"DEBUG: Total reward: {reward}")
         return reward
     
     def step(self, action: int) -> Tuple[GameObservation, float, bool, dict]:

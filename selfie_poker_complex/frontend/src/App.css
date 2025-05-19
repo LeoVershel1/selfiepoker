@@ -1,0 +1,60 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.MuiPaper-root {
+  transition: all 0.3s ease-in-out;
+}
+
+.MuiPaper-root:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.MuiButton-root {
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+.MuiTextField-root {
+  margin-bottom: 1rem;
+}
+
+/* Card styles */
+.MuiCard-root {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.MuiCard-root:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Empty card slot style */
+.MuiCard-root:empty {
+  background: #f0f0f0;
+  border: 2px dashed #ccc;
+}
+
+/* Card content styles */
+.MuiCardContent-root {
+  padding: 8px !important;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card text styles */
+.MuiTypography-h6 {
+  font-size: 1.5rem !important;
+  font-weight: bold !important;
+  color: #333;
+}

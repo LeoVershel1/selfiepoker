@@ -1,20 +1,30 @@
 import os
+import argparse
 from mcts_agent_new import MCTSAgent, train_mcts_agent
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Train MCTS agent for poker game')
+    parser.add_argument('--episodes', type=int, default=1000, help='Number of episodes to train')
+    parser.add_argument('--simulations', type=int, default=1000, help='Number of MCTS simulations per action')
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes (default: CPU count - 1)')
+    parser.add_argument('--checkpoint-dir', type=str, default='mcts_checkpoints', help='Directory to save checkpoints')
+    args = parser.parse_args()
+
     print("Starting MCTS agent training...")
-    print("This will run 1000 episodes")
+    print(f"This will run {args.episodes} episodes")
+    print(f"Using {args.workers or 'CPU count - 1'} worker processes")
     print("Training progress will be shown every 10 episodes")
     
     # Create checkpoint directory if it doesn't exist
-    checkpoint_dir = "mcts_checkpoints"
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
     
     # Train the agent
     agent = train_mcts_agent(
-        num_episodes=1000,
+        num_episodes=args.episodes,
         save_interval=100,
-        checkpoint_dir=checkpoint_dir
+        checkpoint_dir=args.checkpoint_dir,
+        num_workers=args.workers
     )
     
     print("\nTraining complete!")

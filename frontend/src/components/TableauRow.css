@@ -1,0 +1,23 @@
+.tableau-row {
+    display: flex;
+    min-height: 100px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 2px dashed transparent;
+}
+
+.tableau-row.drop-target {
+    border-color: #4CAF50;
+    background: #e8f5e9;
+}
+
+.empty-slot {
+    width: 60px;
+    height: 90px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    margin: 5px;
+    background: rgba(0, 0, 0, 0.05);
+} 
