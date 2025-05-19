@@ -10,9 +10,10 @@ interface TableauRowProps {
     scoringCards: CardType[];
     rowScore: number;
     handType: string;
+    isScoringComplete: boolean;
 }
 
-const TableauRow: React.FC<TableauRowProps> = ({ row, rowId, onCardDrop, scoringCards, rowScore, handType }) => {
+const TableauRow: React.FC<TableauRowProps> = ({ row, rowId, onCardDrop, scoringCards, rowScore, handType, isScoringComplete }) => {
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
     };
@@ -33,6 +34,17 @@ const TableauRow: React.FC<TableauRowProps> = ({ row, rowId, onCardDrop, scoring
         }
     };
 
+    const isCardScoring = (card: CardType) => {
+        console.log(`Checking card ${card.rank}${card.suit} (ID: ${card.id}) against scoring cards:`, scoringCards);
+        const isScoring = scoringCards.some(sc => {
+            const matches = sc.id === card.id;
+            console.log(`Comparing with scoring card ${sc.rank}${sc.suit} (ID: ${sc.id}): ${matches}`);
+            return matches;
+        });
+        console.log(`Card ${card.rank}${card.suit} is scoring: ${isScoring}`);
+        return isScoring;
+    };
+
     return (
         <div className="tableau-row-container">
             <div className="row-info">
@@ -50,7 +62,7 @@ const TableauRow: React.FC<TableauRowProps> = ({ row, rowId, onCardDrop, scoring
                         card={card} 
                         source="tableau"
                         sourceRowId={rowId}
-                        isScoring={scoringCards.some(sc => sc.id === card.id)}
+                        isScoring={isCardScoring(card)}
                     />
                 ))}
                 {Array(row.maxCards - row.cards.length).fill(null).map((_, index) => (

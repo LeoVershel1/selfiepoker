@@ -29,12 +29,22 @@ h2 {
     font-size: 20px;
 }
 
+.tableau-container {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.tableau-section {
+    flex: 1;
+    min-width: 0;
+}
+
 .tableau {
     background: #fff;
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 30px;
 }
 
 .hand {
@@ -82,15 +92,45 @@ h2 {
 .submit-button {
     background-color: #2196F3;
     color: white;
+    position: relative;
+    min-width: 200px;
 }
 
-.submit-button:hover {
+.submit-button:hover:not(:disabled) {
     background-color: #1976D2;
 }
 
 .submit-button:disabled {
     background-color: #BDBDBD;
     cursor: not-allowed;
+}
+
+.submit-button.loading {
+    background-color: #BDBDBD;
+    cursor: not-allowed;
+}
+
+.submit-button.loading::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin: -10px 0 0 -10px;
+    border: 3px solid #ffffff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: button-loading-spinner 1s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+    to {
+        transform: rotate(1turn);
+    }
 }
 
 .new-hand-button {
@@ -118,23 +158,37 @@ h2 {
 
 .score-comparison {
     display: flex;
-    justify-content: space-around;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    justify-content: center;
+    margin: 20px auto;
+    padding: 15px;
     background-color: #fff;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    gap: 15px;
+    max-width: 1000px;
 }
 
 .score-comparison div {
     text-align: center;
     font-size: 1.1rem;
     color: #2c3e50;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 6px;
+    min-width: 150px;
+}
+
+.score-comparison div.difference {
+    color: #2196F3;
+    font-weight: bold;
+    background: rgba(33, 150, 243, 0.1);
 }
 
 .score-comparison div:last-child {
     color: #27ae60;
     font-weight: bold;
+    background: rgba(39, 174, 96, 0.1);
 }
 
 .optimal-arrangement .tableau-row {
@@ -145,4 +199,35 @@ h2 {
 
 .optimal-arrangement .tableau-row:last-child {
     margin-bottom: 0;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #2196F3;
+    border-radius: 50%;
+    animation: loading-spinner 1s linear infinite;
+}
+
+@keyframes loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+    to {
+        transform: rotate(1turn);
+    }
 } 

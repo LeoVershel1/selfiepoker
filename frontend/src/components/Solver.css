@@ -96,6 +96,8 @@
   cursor: pointer;
   font-size: 1em;
   transition: background 0.2s;
+  position: relative;
+  min-width: 200px;
 }
 
 .solver-controls button:hover:not(:disabled) {
@@ -105,6 +107,29 @@
 .solver-controls button:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.solver-controls button:disabled::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin: -10px 0 0 -10px;
+  border: 3px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: button-loading-spinner 1s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+  from {
+    transform: rotate(0turn);
+  }
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 .solver-controls button:last-child {
@@ -135,17 +160,17 @@
 .arrangement-grid {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 30px;
   margin: 20px 0;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 20px auto;
 }
 
 .arrangement-row {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 15px;
+  gap: 15px;
+  padding: 20px;
   background: rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -162,23 +187,23 @@
 .tableau-row {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  min-height: 120px;
-  padding: 10px;
+  gap: 15px;
+  min-height: 140px;
+  padding: 15px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
 }
 
 .solution-card {
-  width: 60px;
-  height: 90px;
+  width: 80px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid #ccc;
   border-radius: 8px;
   background: white;
-  font-size: 1.4em;
+  font-size: 1.6em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
 }
