@@ -23,7 +23,7 @@ class MCTSNode:
 class MCTSAgent:
     def __init__(
         self,
-        exploration_weight: float = 0.5,  # Reduced from 1.0 to encourage more exploitation
+        exploration_weight: float = 0.5, 
         max_simulations: int = 100,
         max_depth: int = 39,
         num_workers: int = None
@@ -144,7 +144,7 @@ class MCTSAgent:
             
             # Update state for next iteration
             state = next_state
-            discount *= 0.98  # Slower discount decay
+            discount *= 0.98 
             depth += 1
             
             if done:

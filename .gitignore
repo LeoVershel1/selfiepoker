@@ -52,4 +52,5 @@ checkpoints/
 mcts_checkpoints/
 src/backend/results
 results/
+todo.txt
 *.pkl 
