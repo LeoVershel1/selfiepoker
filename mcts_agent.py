@@ -168,11 +168,11 @@ class MCTSAgent:
         return child
     
     def _simulate(self, node: MCTSNode, sim_agent: PokerAgent) -> float:
-        """Simulate a playout from the node using a heuristic-based strategy"""
+        """Simulate a playout from the node using a more balanced strategy"""
         state = node.state
         depth = 0
         total_reward = 0
-        discount = 1.0  # Start with full discount
+        discount = 1.0
         
         while not state.tableau.is_complete() and depth < self.max_depth:
             valid_actions = sim_agent.get_valid_actions()
@@ -182,40 +182,40 @@ class MCTSAgent:
             # Get the current position in the tableau
             position = state.tableau.current_placement_index
             
-            # Choose action based on position and card values
-            if position < 5:  # Bottom row - prefer high cards
+            # More balanced action selection strategy
+            if position < 5:  # Bottom row
                 action_values = [
                     (i, CARD_VALUES[state.hand[i].value])
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1], reverse=True)
-                # 80% chance to choose from top 3 cards
-                if random.random() < 0.8 and len(action_values) >= 3:
+                # 60% chance to choose from top 3 cards
+                if random.random() < 0.6 and len(action_values) >= 3:
                     action = random.choice(action_values[:3])[0]
                 else:
                     action = random.choice(valid_actions)
             
-            elif position < 10:  # Middle row - prefer medium cards
+            elif position < 10:  # Middle row
                 action_values = [
                     (i, CARD_VALUES[state.hand[i].value])
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1])
-                # 70% chance to choose from middle cards
-                if random.random() < 0.7 and len(action_values) >= 3:
+                # 50% chance to choose from middle cards
+                if random.random() < 0.5 and len(action_values) >= 3:
                     mid_start = len(action_values) // 3
                     action = random.choice(action_values[mid_start:mid_start+3])[0]
                 else:
                     action = random.choice(valid_actions)
             
-            else:  # Top row - prefer low cards
+            else:  # Top row
                 action_values = [
                     (i, CARD_VALUES[state.hand[i].value])
                     for i in valid_actions
                 ]
                 action_values.sort(key=lambda x: x[1])
-                # 80% chance to choose from bottom 3 cards
-                if random.random() < 0.8 and len(action_values) >= 3:
+                # 60% chance to choose from bottom 3 cards
+                if random.random() < 0.6 and len(action_values) >= 3:
                     action = random.choice(action_values[:3])[0]
                 else:
                     action = random.choice(valid_actions)
@@ -233,16 +233,19 @@ class MCTSAgent:
             depth += 1
             
             if done:
+                # Add terminal state reward
+                if state.tableau.is_complete():
+                    total_reward += 10.0 * discount  # Bonus for completing the tableau
                 break
         
         return total_reward
     
     def _backpropagate(self, node: MCTSNode, value: float):
-        """Backpropagate the value up the tree with normalization"""
+        """Backpropagate the value up the tree with improved value handling"""
         while node is not None:
             node.visits += 1
-            # Normalize the value by the number of visits
-            node.value = (node.value * (node.visits - 1) + value) / node.visits
+            # Use a more stable update formula
+            node.value = node.value + (value - node.value) / node.visits
             node = node.parent
     
     def _ucb_select(self, node: MCTSNode) -> MCTSNode:
