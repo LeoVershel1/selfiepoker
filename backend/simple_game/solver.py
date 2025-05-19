@@ -9,6 +9,8 @@ from .poker import (
 )
 from functools import lru_cache
 from .cache_manager import SolverCache
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 @dataclass
 class GameState:
@@ -63,6 +65,13 @@ class Action:
     def __str__(self) -> str:
         return f"Place card {self.card_index} in {row} row at position {self.position}"
 
+# Define suit order for consistent sorting
+SUIT_ORDER = {Suit.SPADES: 0, Suit.HEARTS: 1, Suit.DIAMONDS: 2, Suit.CLUBS: 3}
+
+def card_sort_key(card: Card) -> Tuple[int, int]:
+    """Sort key for cards: (value, suit_order)"""
+    return (CARD_VALUES[card.value], SUIT_ORDER[card.suit])
+
 class TableauSolver:
     def __init__(self):
         self.best_score = 0
@@ -113,12 +122,16 @@ class TableauSolver:
         if bottom_type.value <= middle_type.value or middle_type.value <= top_type.value:
             return float('-inf'), 0, float('-inf')
         
-        # Calculate immediate score
+        # Early pruning: Calculate immediate score first
         immediate_score = (
             calculate_three_card_score(top_type, arrangement['top']) +
             calculate_five_card_score(middle_type, arrangement['middle'], False) +
             calculate_five_card_score(bottom_type, arrangement['bottom'], True)
         )
+        
+        # If immediate score alone can't beat best_score, skip future value calculation
+        if immediate_score * 0.85 <= self.best_score:
+            return float('-inf'), 0, float('-inf')
         
         # Calculate future value
         scoring_cards = top_scoring + middle_scoring + bottom_scoring
@@ -133,6 +146,17 @@ class TableauSolver:
         
         return immediate_score, future_value, total_score
 
+    def _evaluate_arrangement_worker(self, arrangement_data: Tuple[Dict[str, List[Card]], List[Card]]) -> Optional[Tuple[Dict[str, List[Card]], int, float, float]]:
+        """Worker function for parallel processing"""
+        try:
+            arrangement, cards = arrangement_data
+            immediate_score, future_value, total_score = self.evaluate_arrangement(arrangement)
+            if total_score != float('-inf'):
+                return arrangement, immediate_score, future_value, total_score
+        except Exception as e:
+            print(f"Error in worker: {e}")
+        return None
+
     def find_best_arrangement(self, cards: List[Card]) -> Tuple[Dict[str, List[Card]], int, float]:
         """Find the best possible arrangement by directly evaluating all valid arrangements"""
         if len(cards) != 13:
@@ -145,40 +169,74 @@ class TableauSolver:
             return cached_result
 
         print("Finding best arrangement...")
-        best_score = float('-inf')
+        self.best_score = float('-inf')
         best_arrangement = None
         best_immediate_score = 0
         best_future_value = 0
 
-        # Generate all possible combinations for top row (3 cards)
-        for top_cards in combinations(cards, 3):
-            remaining_cards = [c for c in cards if c not in top_cards]
+        # Sort cards by value and suit to improve pruning efficiency
+        sorted_cards = sorted(cards, key=card_sort_key, reverse=True)
+
+        # Generate all possible arrangements
+        arrangements = []
+        for top_cards in combinations(sorted_cards, 3):
+            # Early pruning: If top row is too weak, skip
+            top_type, _ = evaluate_three_card_hand(top_cards)
+            if top_type.value < HandType.HIGH_CARD.value:
+                continue
+
+            remaining_cards = [c for c in sorted_cards if c not in top_cards]
             
-            # Generate all possible combinations for middle row (5 cards)
             for middle_cards in combinations(remaining_cards, 5):
+                # Early pruning: If middle row is too weak, skip
+                middle_type, _ = evaluate_five_card_hand(middle_cards)
+                if middle_type.value <= top_type.value:
+                    continue
+
                 bottom_cards = [c for c in remaining_cards if c not in middle_cards]
                 
-                # Create arrangement
                 arrangement = {
                     'top': list(top_cards),
                     'middle': list(middle_cards),
                     'bottom': bottom_cards
                 }
-                
-                # Evaluate arrangement
-                immediate_score, future_value, total_score = self.evaluate_arrangement(arrangement)
-                
-                # Update best if better
-                if total_score > best_score:
-                    best_score = total_score
-                    best_arrangement = arrangement
-                    best_immediate_score = immediate_score
-                    best_future_value = future_value
-                    
-                    # Print progress
-                    print(f"Found better arrangement! Score: {best_score:.2f}")
+                arrangements.append((arrangement, cards))
 
-        if best_arrangement is None or best_score == float('-inf'):
+        # Use parallel processing to evaluate arrangements
+        num_workers = max(1, mp.cpu_count() - 1)  # Leave one CPU free
+        print(f"Using {num_workers} workers for parallel processing")
+        
+        try:
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                futures = [executor.submit(self._evaluate_arrangement_worker, arr_data) 
+                          for arr_data in arrangements]
+                
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result is not None:
+                        arrangement, immediate_score, future_value, total_score = result
+                        if total_score > self.best_score:
+                            self.best_score = total_score
+                            best_arrangement = arrangement
+                            best_immediate_score = immediate_score
+                            best_future_value = future_value
+                            print(f"Found better arrangement! Score: {self.best_score:.2f}")
+        except Exception as e:
+            print(f"Error in parallel processing: {e}")
+            # Fall back to sequential processing
+            print("Falling back to sequential processing...")
+            for arr_data in arrangements:
+                result = self._evaluate_arrangement_worker(arr_data)
+                if result is not None:
+                    arrangement, immediate_score, future_value, total_score = result
+                    if total_score > self.best_score:
+                        self.best_score = total_score
+                        best_arrangement = arrangement
+                        best_immediate_score = immediate_score
+                        best_future_value = future_value
+                        print(f"Found better arrangement! Score: {self.best_score:.2f}")
+
+        if best_arrangement is None or self.best_score == float('-inf'):
             raise ValueError("No valid arrangement found that satisfies row strength requirements")
 
         # Cache the result
