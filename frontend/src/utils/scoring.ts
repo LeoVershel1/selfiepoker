@@ -43,7 +43,7 @@ const getCardValue = (value: string): number => {
 // Helper function to check if cards form a straight
 const isStraight = (cards: Card[]): boolean => {
     if (cards.length < 5) return false;
-    const values = cards.map(card => getCardValue(card.value)).sort((a, b) => a - b);
+    const values = cards.map(card => card.value).sort((a, b) => a - b);
     for (let i = 1; i < values.length; i++) {
         if (values[i] !== values[i - 1] + 1) return false;
     }

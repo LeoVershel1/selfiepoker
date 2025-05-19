@@ -22,7 +22,47 @@ CORS(app)  # Enable CORS for all routes
 
 def convert_to_pycard(card_dict: Dict) -> PyCard:
     """Convert a card dictionary from frontend to a Python Card object."""
-    return PyCard(card_dict['value'], card_dict['suit'])
+    # Map Unicode suit symbols to Suit enum values
+    suit_map = {
+        '♠': Suit.SPADES,
+        '♥': Suit.HEARTS,
+        '♦': Suit.DIAMONDS,
+        '♣': Suit.CLUBS
+    }
+    
+    # Convert numeric values to card ranks
+    value_map = {
+        1: 'A',
+        11: 'J',
+        12: 'Q',
+        13: 'K'
+    }
+    
+    try:
+        # Convert numeric value to card rank if needed
+        value = value_map.get(card_dict['value'], str(card_dict['value']))
+        return PyCard(value, suit_map[card_dict['suit']])
+    except KeyError as e:
+        logger.error(f"Invalid suit symbol: {card_dict['suit']}")
+        raise ValueError(f"Invalid suit symbol: {card_dict['suit']}")
+    except Exception as e:
+        logger.error(f"Error converting card: {str(e)}")
+        raise ValueError(f"Error converting card: {str(e)}")
+
+def convert_to_frontend_card(card: PyCard) -> Dict:
+    """Convert a Python Card object to frontend format."""
+    # Map Suit enum values to Unicode suit symbols
+    suit_map = {
+        Suit.SPADES: '♠',
+        Suit.HEARTS: '♥',
+        Suit.DIAMONDS: '♦',
+        Suit.CLUBS: '♣'
+    }
+    return {
+        'suit': suit_map[card.suit],
+        'value': card.value,
+        'id': f"{card.value}{suit_map[card.suit]}"
+    }
 
 @app.route('/api/evaluate-row', methods=['POST'])
 def evaluate_row():
@@ -47,8 +87,7 @@ def evaluate_row():
     response = {
         'score': score,
         'hand_type': str(hand_type),
-        'scoring_cards': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
-                         for card in scoring_cards]
+        'scoring_cards': [convert_to_frontend_card(card) for card in scoring_cards]
     }
     logger.debug(f"Sending response: {response}")
     return jsonify(response)
@@ -78,8 +117,7 @@ def evaluate_tableau():
         row_scores[row_id] = {
             'score': score,
             'hand_type': str(hand_type) if hand_type else '',
-            'scoring_cards': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
-                            for card in scoring_cards]
+            'scoring_cards': [convert_to_frontend_card(card) for card in scoring_cards]
         }
         total_score += score
 
@@ -97,9 +135,16 @@ def find_optimal_arrangement():
     
     try:
         # Convert cards to Python Card objects
-        cards = [convert_to_pycard(card) for card in data['cards']]
+        logger.debug("Converting cards...")
+        cards = []
+        for card in data['cards']:
+            logger.debug(f"Converting card: {card}")
+            pycard = convert_to_pycard(card)
+            logger.debug(f"Converted to: {pycard}")
+            cards.append(pycard)
         
         # Use solver to find best arrangement
+        logger.debug("Finding best arrangement...")
         solver = TableauSolver()
         arrangement, immediate_score, future_value = solver.find_best_arrangement(cards)
         hand_types = solver.get_hand_types(arrangement)
@@ -107,12 +152,9 @@ def find_optimal_arrangement():
         # Convert arrangement back to frontend format
         response = {
             'arrangement': {
-                'top': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
-                       for card in arrangement['top']],
-                'middle': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
-                          for card in arrangement['middle']],
-                'bottom': [{'suit': card.suit, 'value': card.value, 'id': f"{card.value}{card.suit}"} 
-                          for card in arrangement['bottom']]
+                'top': [convert_to_frontend_card(card) for card in arrangement['top']],
+                'middle': [convert_to_frontend_card(card) for card in arrangement['middle']],
+                'bottom': [convert_to_frontend_card(card) for card in arrangement['bottom']]
             },
             'scores': {
                 'immediate': immediate_score,
@@ -129,9 +171,12 @@ def find_optimal_arrangement():
         logger.debug(f"Sending optimal arrangement response: {response}")
         return jsonify(response)
         
-    except Exception as e:
-        logger.error(f"Error finding optimal arrangement: {str(e)}")
+    except ValueError as e:
+        logger.error(f"Validation error in optimal arrangement: {str(e)}")
         return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Unexpected error finding optimal arrangement: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred while finding the optimal arrangement'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000) 

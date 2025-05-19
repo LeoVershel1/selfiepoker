@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { Card as CardType, Tableau, GameState } from '../types';
-import { evaluateTableau, findOptimalArrangement } from '../utils/scoring';
+import { Card, Suit, Value, GameState } from '../types';
+import { evaluateTableau, findOptimalArrangement } from '../utils/api';
+import CardComponent from './Card';
 import TableauRow from './TableauRow';
-import Card from './Card';
 import './Game.css';
 
-const generateDeck = (): CardType[] => {
-    const suits: Array<'hearts' | 'diamonds' | 'clubs' | 'spades'> = ['hearts', 'diamonds', 'clubs', 'spades'];
-    const values: Array<'2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A'> = 
-        ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+const generateDeck = (): Card[] => {
+    const deck: Card[] = [];
+    const suits: Suit[] = ['♠', '♥', '♦', '♣'];
+    const values: Value[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     
-    const deck: CardType[] = [];
     suits.forEach(suit => {
         values.forEach(value => {
             deck.push({
+                rank: RANKS[value - 1],
                 suit,
                 value,
-                id: `${value}${suit}`
+                is_scoring: true,
+                id: `${RANKS[value - 1]}${suit}${Date.now()}`
             });
         });
     });
@@ -24,7 +27,7 @@ const generateDeck = (): CardType[] => {
     return deck;
 };
 
-const shuffleDeck = (deck: CardType[]): CardType[] => {
+const shuffleDeck = (deck: Card[]): Card[] => {
     const shuffled = [...deck];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -44,27 +47,29 @@ const Game: React.FC = () => {
                 bottom: { cards: [], maxCards: 5 }
             },
             score: 0,
-            futureValue: 0
+            round: 1,
+            is_submitted: false
         };
     });
 
     const [scoringResults, setScoringResults] = useState<{
-        rowScores: { [key: string]: { score: number; scoringCards: CardType[]; handType: string } };
+        rowScores: { [key: string]: { score: number; scoringCards: Card[]; handType: string } };
         totalScore: number;
     } | null>(null);
 
     const [optimalArrangement, setOptimalArrangement] = useState<{
-        arrangement: { [key: string]: CardType[] };
+        arrangement: { [key: string]: Card[] };
         scores: { immediate: number; future: number; total: number };
         hand_types: { [key: string]: string };
+        rowScores?: { [key: string]: { score: number; scoringCards: Card[]; handType: string } };
     } | null>(null);
 
     const [isScoringComplete, setIsScoringComplete] = useState(false);
 
-    const handleCardDrop = (card: CardType, rowId: string, position: number, source: 'hand' | 'tableau', sourceRowId?: string) => {
+    const handleCardDrop = (card: Card, rowId: string, position: number, source: 'hand' | 'tableau', sourceRowId?: string) => {
         setGameState(prevState => {
             // Check if the card is already in the target row
-            const targetRow = prevState.tableau[rowId as keyof Tableau];
+            const targetRow = prevState.tableau[rowId as keyof typeof prevState.tableau];
             if (targetRow.cards.some(c => c.id === card.id)) {
                 return prevState; // Don't update state if card is already in the row
             }
@@ -82,7 +87,7 @@ const Game: React.FC = () => {
                 }
             } else if (source === 'tableau' && sourceRowId) {
                 // Remove from source tableau row
-                const sourceRow = newTableau[sourceRowId as keyof Tableau];
+                const sourceRow = newTableau[sourceRowId as keyof typeof newTableau];
                 const sourceIndex = sourceRow.cards.findIndex(c => c.id === card.id);
                 if (sourceIndex !== -1) {
                     sourceRow.cards.splice(sourceIndex, 1);
@@ -90,7 +95,7 @@ const Game: React.FC = () => {
             }
 
             // Add to target row
-            newTableau[rowId as keyof Tableau] = {
+            newTableau[rowId as keyof typeof newTableau] = {
                 ...targetRow,
                 cards: [
                     ...targetRow.cards.slice(0, position),
@@ -139,7 +144,34 @@ const Game: React.FC = () => {
                 ...gameState.tableau.bottom.cards
             ];
             const optimal = await findOptimalArrangement(allCards);
-            setOptimalArrangement(optimal);
+            
+            // Evaluate the optimal arrangement to get row scores
+            const optimalResults = await evaluateTableau({
+                top: { cards: optimal.arrangement.top, maxCards: 3 },
+                middle: { cards: optimal.arrangement.middle, maxCards: 5 },
+                bottom: { cards: optimal.arrangement.bottom, maxCards: 5 }
+            });
+            
+            setOptimalArrangement({
+                ...optimal,
+                rowScores: {
+                    top: {
+                        score: optimalResults.row_scores.top.score,
+                        scoringCards: optimalResults.row_scores.top.scoring_cards,
+                        handType: optimalResults.row_scores.top.hand_type
+                    },
+                    middle: {
+                        score: optimalResults.row_scores.middle.score,
+                        scoringCards: optimalResults.row_scores.middle.scoring_cards,
+                        handType: optimalResults.row_scores.middle.hand_type
+                    },
+                    bottom: {
+                        score: optimalResults.row_scores.bottom.score,
+                        scoringCards: optimalResults.row_scores.bottom.scoring_cards,
+                        handType: optimalResults.row_scores.bottom.hand_type
+                    }
+                }
+            });
             
             setIsScoringComplete(true);
         } catch (error) {
@@ -150,7 +182,7 @@ const Game: React.FC = () => {
     const handleNewHand = () => {
         setGameState(prevState => {
             // Start with an empty hand
-            const newHand: CardType[] = [];
+            const newHand: Card[] = [];
             // Create a new empty tableau
             const newTableau = {
                 top: { cards: [], maxCards: 3 },
@@ -164,7 +196,7 @@ const Game: React.FC = () => {
 
                 // Collect all non-scoring cards from the tableau
                 Object.entries(scoringResults.rowScores).forEach(([rowId, result]) => {
-                    const row = prevState.tableau[rowId as keyof Tableau];
+                    const row = prevState.tableau[rowId as keyof typeof prevState.tableau];
                     const nonScoringCards = row.cards.filter(
                         card => !result.scoringCards.some(sc => sc.id === card.id)
                     );
@@ -187,6 +219,7 @@ const Game: React.FC = () => {
             };
         });
         setScoringResults(null);
+        setOptimalArrangement(null);
         setIsScoringComplete(false);
     };
 
@@ -242,24 +275,24 @@ const Game: React.FC = () => {
                         row={{ cards: optimalArrangement.arrangement.top, maxCards: 3 }}
                         rowId="top"
                         onCardDrop={() => {}}
-                        scoringCards={[]}
-                        rowScore={0}
+                        scoringCards={optimalArrangement.rowScores?.top?.scoringCards || []}
+                        rowScore={optimalArrangement.rowScores?.top?.score || 0}
                         handType={optimalArrangement.hand_types.top}
                     />
                     <TableauRow
                         row={{ cards: optimalArrangement.arrangement.middle, maxCards: 5 }}
                         rowId="middle"
                         onCardDrop={() => {}}
-                        scoringCards={[]}
-                        rowScore={0}
+                        scoringCards={optimalArrangement.rowScores?.middle?.scoringCards || []}
+                        rowScore={optimalArrangement.rowScores?.middle?.score || 0}
                         handType={optimalArrangement.hand_types.middle}
                     />
                     <TableauRow
                         row={{ cards: optimalArrangement.arrangement.bottom, maxCards: 5 }}
                         rowId="bottom"
                         onCardDrop={() => {}}
-                        scoringCards={[]}
-                        rowScore={0}
+                        scoringCards={optimalArrangement.rowScores?.bottom?.scoringCards || []}
+                        rowScore={optimalArrangement.rowScores?.bottom?.score || 0}
                         handType={optimalArrangement.hand_types.bottom}
                     />
                 </div>
@@ -269,7 +302,7 @@ const Game: React.FC = () => {
                 <h2>Your Hand</h2>
                 <div className="hand-cards">
                     {gameState.hand.map(card => (
-                        <Card 
+                        <CardComponent 
                             key={card.id} 
                             card={card} 
                             source="hand"

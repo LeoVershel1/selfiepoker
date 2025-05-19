@@ -170,8 +170,8 @@ class TableauSolver:
                     # Print progress
                     print(f"Found better arrangement! Score: {best_score:.2f}")
 
-        if best_arrangement is None:
-            raise ValueError("No valid arrangement found for these cards")
+        if best_arrangement is None or best_score == float('-inf'):
+            raise ValueError("No valid arrangement found that satisfies row strength requirements")
 
         return best_arrangement, best_immediate_score, best_future_value
 

@@ -10,7 +10,7 @@ interface CardProps {
     isScoring?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ card, onDragStart, source = 'hand', sourceRowId, isScoring = false }) => {
+const CardComponent: React.FC<CardProps> = ({ card, onDragStart, source = 'hand', sourceRowId, isScoring = false }) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('text/plain', JSON.stringify({ card, source, sourceRowId }));
         if (onDragStart) {
@@ -28,7 +28,7 @@ const Card: React.FC<CardProps> = ({ card, onDragStart, source = 'hand', sourceR
         }
     };
 
-    const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+    const isRed = card.suit === '♥' || card.suit === '♦';
 
     return (
         <div
@@ -42,4 +42,4 @@ const Card: React.FC<CardProps> = ({ card, onDragStart, source = 'hand', sourceR
     );
 };
 
-export default Card; 
+export default CardComponent; 
