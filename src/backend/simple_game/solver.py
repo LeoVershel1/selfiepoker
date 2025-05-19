@@ -63,7 +63,7 @@ class Action:
     card_index: int
     
     def __str__(self) -> str:
-        return f"Place card {self.card_index} in {row} row at position {self.position}"
+        return f"Place card {self.card_index} in {self.row} row at position {self.position}"
 
 # Define suit order for consistent sorting
 SUIT_ORDER = {Suit.SPADES: 0, Suit.HEARTS: 1, Suit.DIAMONDS: 2, Suit.CLUBS: 3}
