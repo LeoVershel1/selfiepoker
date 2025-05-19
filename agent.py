@@ -127,7 +127,7 @@ class PokerAgent:
         # Sort cards by value for consistent evaluation
         sorted_cards = sorted(cards, key=lambda x: CARD_VALUES[x.value], reverse=True)
         
-        # For 3-card hands, we can only have high card, pair, or three of a kind
+        # For 3-card hands (top row), we can only have high card, pair, or three of a kind
         if len(cards) == 3:
             # Check for three of a kind
             if 3 in value_counts.values():
@@ -145,7 +145,7 @@ class PokerAgent:
             # High card
             return HandType.HIGH_CARD, [sorted_cards[0]], CARD_VALUES[sorted_cards[0].value]
         
-        # For 5-card hands (partial or complete)
+        # For 5-card hands (bottom and middle rows)
         if len(cards) <= 5:
             # Check for four of a kind
             if 4 in value_counts.values():
@@ -186,7 +186,6 @@ class PokerAgent:
                 return HandType.ONE_PAIR, pair_cards + kickers, pair_value * 2 + sum(CARD_VALUES[k.value] for k in kickers)
             
             # Check for potential flush
-            # All placed cards must be of the same suit to consider it a potential flush
             suit_counts = {}
             for card in cards:
                 suit_counts[card.suit] = suit_counts.get(card.suit, 0) + 1
@@ -195,7 +194,6 @@ class PokerAgent:
                 return HandType.FLUSH, cards, sum(CARD_VALUES[card.value] for card in cards)
             
             # Check for potential straight
-            # All placed cards must be part of a potential straight
             sorted_values = sorted(values)
             
             # Check for Ace-low straight (A-2-3-4-5)
@@ -203,7 +201,6 @@ class PokerAgent:
                 return HandType.STRAIGHT, sorted_cards, 5  # Special value for Ace-low straight
             
             # Check for regular straight
-            # For partial hands, all placed cards must be consecutive
             if len(sorted_values) >= 3:
                 is_consecutive = True
                 for i in range(len(sorted_values) - 1):
@@ -266,9 +263,9 @@ class PokerAgent:
         Takes into account partial hands and their potential.
         Rewards are structured to encourage building towards stronger hands.
         """
-        reward = 0
+        reward = 0.0
         
-        # Check bottom row
+        # Check bottom row (full poker hands)
         if len(new_tableau.bottom_row) > len(old_tableau.bottom_row):
             old_type, _, old_value = self._evaluate_hand_strength(old_tableau.bottom_row)
             new_type, _, new_value = self._evaluate_hand_strength(new_tableau.bottom_row)
@@ -297,6 +294,27 @@ class PokerAgent:
                 value_diff = new_value - old_value
                 if value_diff > 0:
                     reward += value_diff / 10  # Reward proportional to value improvement
+            
+            # Incremental rewards for building towards good hands
+            if len(new_tableau.bottom_row) >= 3:
+                # Check for potential flush
+                suit_counts = {}
+                for card in new_tableau.bottom_row:
+                    suit_counts[card.suit] = suit_counts.get(card.suit, 0) + 1
+                if max(suit_counts.values()) >= 3:
+                    reward += 2.0  # Reward for having 3+ cards of same suit
+                
+                # Check for potential straight
+                values = sorted([CARD_VALUES[card.value] for card in new_tableau.bottom_row])
+                if len(values) >= 3:
+                    # Check for consecutive cards
+                    is_consecutive = True
+                    for i in range(len(values) - 1):
+                        if values[i+1] - values[i] != 1:
+                            is_consecutive = False
+                            break
+                    if is_consecutive:
+                        reward += 2.0  # Reward for having 3+ consecutive cards
         
         # Similar logic for middle row (with lower rewards)
         if len(new_tableau.middle_row) > len(old_tableau.middle_row):
@@ -324,30 +342,47 @@ class PokerAgent:
                 value_diff = new_value - old_value
                 if value_diff > 0:
                     reward += value_diff / 15
+            
+            # Incremental rewards for building towards good hands
+            if len(new_tableau.middle_row) >= 3:
+                # Check for potential flush
+                suit_counts = {}
+                for card in new_tableau.middle_row:
+                    suit_counts[card.suit] = suit_counts.get(card.suit, 0) + 1
+                if max(suit_counts.values()) >= 3:
+                    reward += 1.5  # Reward for having 3+ cards of same suit
+                
+                # Check for potential straight
+                values = sorted([CARD_VALUES[card.value] for card in new_tableau.middle_row])
+                if len(values) >= 3:
+                    # Check for consecutive cards
+                    is_consecutive = True
+                    for i in range(len(values) - 1):
+                        if values[i+1] - values[i] != 1:
+                            is_consecutive = False
+                            break
+                    if is_consecutive:
+                        reward += 1.5  # Reward for having 3+ consecutive cards
         
-        # Similar logic for top row (with lowest rewards)
+        # Top row rewards (only three-card hands)
         if len(new_tableau.top_row) > len(old_tableau.top_row):
             old_type, _, old_value = self._evaluate_hand_strength(old_tableau.top_row)
             new_type, _, new_value = self._evaluate_hand_strength(new_tableau.top_row)
             
+            # For top row, we only consider three-card hands
             if new_type.value > old_type.value:
-                if new_type == HandType.FOUR_OF_A_KIND:
+                # Three of a kind is the best possible hand for top row
+                if new_type == HandType.THREE_OF_A_KIND:
                     reward += 6 + (new_value / 100)
-                elif new_type == HandType.FULL_HOUSE:
-                    reward += 5 + (new_value / 100)
-                elif new_type == HandType.FLUSH:
-                    reward += 4 + (new_value / 100)
-                elif new_type == HandType.STRAIGHT:
-                    reward += 3 + (new_value / 100)
-                elif new_type == HandType.THREE_OF_A_KIND:
-                    reward += 2 + (new_value / 100)
-                elif new_type == HandType.TWO_PAIR:
-                    reward += 1.5 + (new_value / 100)
+                # One pair is second best
                 elif new_type == HandType.ONE_PAIR:
-                    reward += 1 + (new_value / 100)
+                    reward += 3 + (new_value / 100)
+                # High card is lowest
                 else:
-                    reward += 0.5 + (new_value / 100)
-            elif new_type.value == old_type.value:
+                    reward += 1 + (new_value / 100)
+            
+            # Reward for improving value within same hand type
+            if new_type.value == old_type.value:
                 value_diff = new_value - old_value
                 if value_diff > 0:
                     reward += value_diff / 20

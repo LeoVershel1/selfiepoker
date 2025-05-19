@@ -9,6 +9,8 @@ from functools import partial
 from agent import PokerAgent, GameObservation
 from card import Card
 from game import GameState
+from poker import CARD_VALUES
+import random
 
 class MCTSNode:
     def __init__(self, state: GameObservation, parent=None, action=None):
@@ -47,10 +49,11 @@ class MCTSNode:
 class MCTSAgent:
     def __init__(
         self,
-        exploration_weight: float = 1.41,  # sqrt(2) for UCB1
-        max_simulations: int = 1000,
-        max_depth: int = 50,
-        num_parallel: int = None
+        exploration_weight: float = 2.5,
+        max_simulations: int = 2000,
+        max_depth: int = 39,
+        num_parallel: int = None,
+        discount_factor: float = 0.95  # Added discount factor for rewards
     ):
         self.exploration_weight = exploration_weight
         self.max_simulations = max_simulations
@@ -58,9 +61,25 @@ class MCTSAgent:
         self.agent = PokerAgent()
         self.num_parallel = num_parallel or cpu_count()
         self.tree_cache = {}  # Cache for storing partial trees
+        self.discount_factor = discount_factor
+        
+        # Get reward weights from the agent
+        self.score_weight = self.agent.score_weight
+        self.hand_upgrade_weight = self.agent.hand_upgrade_weight
+        self.invalid_ordering_weight = self.agent.invalid_ordering_weight
+        
+        # Initialize root node
+        self.root = None
     
     def get_action(self, state: GameObservation) -> int:
         """Get the best action for the current state using parallel MCTS"""
+        # Try to find existing root node in cache
+        state_key = str(state.tableau) + str(state.hand)
+        if state_key in self.tree_cache:
+            self.root = self.tree_cache[state_key]
+        else:
+            self.root = MCTSNode(state)
+        
         # Create a pool of workers
         with Pool(processes=self.num_parallel) as pool:
             # Run parallel MCTS simulations
@@ -75,8 +94,29 @@ class MCTSAgent:
             action_stats[action]['visits'] += 1
             action_stats[action]['value'] += value
         
-        # Choose the action with the highest visit count
-        return max(action_stats.items(), key=lambda x: x[1]['visits'])[0]
+        # Choose the action with the highest average value
+        valid_actions = self.agent.get_valid_actions()
+        if not valid_actions:
+            return 0
+            
+        # Filter to only valid actions and calculate average values
+        action_values = {
+            action: stats['value'] / max(stats['visits'], 1)
+            for action, stats in action_stats.items()
+            if action in valid_actions
+        }
+        
+        if not action_values:
+            return valid_actions[0]
+        
+        # Store the subtree for the chosen action
+        best_action = max(action_values.items(), key=lambda x: x[1])[0]
+        if best_action in self.root.children:
+            next_state = self.root.children[best_action].state
+            next_state_key = str(next_state.tableau) + str(next_state.hand)
+            self.tree_cache[next_state_key] = self.root.children[best_action]
+        
+        return best_action
     
     def _run_single_simulation(self, state: GameObservation, _) -> Tuple[int, float]:
         """Run a single MCTS simulation and return the first action and its value"""
@@ -128,25 +168,67 @@ class MCTSAgent:
         return child
     
     def _simulate(self, node: MCTSNode, sim_agent: PokerAgent) -> float:
-        """Simulate a random playout from the node"""
+        """Simulate a playout from the node using a heuristic-based strategy"""
         state = node.state
         depth = 0
         total_reward = 0
+        discount = 1.0  # Start with full discount
         
         while not state.tableau.is_complete() and depth < self.max_depth:
             valid_actions = sim_agent.get_valid_actions()
             if not valid_actions:
                 break
             
-            # Choose random action
-            action = np.random.choice(valid_actions)
+            # Get the current position in the tableau
+            position = state.tableau.current_placement_index
+            
+            # Choose action based on position and card values
+            if position < 5:  # Bottom row - prefer high cards
+                action_values = [
+                    (i, CARD_VALUES[state.hand[i].value])
+                    for i in valid_actions
+                ]
+                action_values.sort(key=lambda x: x[1], reverse=True)
+                # 80% chance to choose from top 3 cards
+                if random.random() < 0.8 and len(action_values) >= 3:
+                    action = random.choice(action_values[:3])[0]
+                else:
+                    action = random.choice(valid_actions)
+            
+            elif position < 10:  # Middle row - prefer medium cards
+                action_values = [
+                    (i, CARD_VALUES[state.hand[i].value])
+                    for i in valid_actions
+                ]
+                action_values.sort(key=lambda x: x[1])
+                # 70% chance to choose from middle cards
+                if random.random() < 0.7 and len(action_values) >= 3:
+                    mid_start = len(action_values) // 3
+                    action = random.choice(action_values[mid_start:mid_start+3])[0]
+                else:
+                    action = random.choice(valid_actions)
+            
+            else:  # Top row - prefer low cards
+                action_values = [
+                    (i, CARD_VALUES[state.hand[i].value])
+                    for i in valid_actions
+                ]
+                action_values.sort(key=lambda x: x[1])
+                # 80% chance to choose from bottom 3 cards
+                if random.random() < 0.8 and len(action_values) >= 3:
+                    action = random.choice(action_values[:3])[0]
+                else:
+                    action = random.choice(valid_actions)
             
             # Take action
             sim_agent.game_state.tableau = state.tableau
             sim_agent.game_state.hand = state.hand
             next_state, reward, done, _ = sim_agent.step(action)
             
-            total_reward += reward
+            # Apply discount to reward
+            total_reward += reward * discount
+            discount *= self.discount_factor
+            
             state = next_state
             depth += 1
             
@@ -156,17 +238,20 @@ class MCTSAgent:
         return total_reward
     
     def _backpropagate(self, node: MCTSNode, value: float):
-        """Backpropagate the value up the tree"""
+        """Backpropagate the value up the tree with normalization"""
         while node is not None:
             node.visits += 1
-            node.value += value
+            # Normalize the value by the number of visits
+            node.value = (node.value * (node.visits - 1) + value) / node.visits
             node = node.parent
     
     def _ucb_select(self, node: MCTSNode) -> MCTSNode:
-        """Select child node using UCB1 formula"""
+        """Select child node using UCB1 formula with improved exploration"""
         log_parent_visits = math.log(node.visits)
         
         def ucb_value(child):
+            if child.visits == 0:
+                return float('inf')
             exploitation = child.value / child.visits
             exploration = self.exploration_weight * math.sqrt(log_parent_visits / child.visits)
             return exploitation + exploration
@@ -196,7 +281,7 @@ class MCTSAgent:
         self.tree_cache = state['tree_cache']
 
 def train_mcts_agent(
-    num_episodes: int = 1000,
+    num_episodes: int = 10000,
     save_interval: int = 100,
     checkpoint_dir: str = "mcts_checkpoints"
 ) -> MCTSAgent:

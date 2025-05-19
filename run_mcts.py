@@ -12,7 +12,7 @@ def main():
     
     # Train the agent
     agent = train_mcts_agent(
-        num_episodes=1000,
+        num_episodes=10000,
         save_interval=100,
         checkpoint_dir=checkpoint_dir
     )
