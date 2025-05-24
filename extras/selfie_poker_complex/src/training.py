@@ -49,7 +49,7 @@ class Trainer:
         buffer_size: int = 10000,
         batch_size: int = 64,
         target_update: int = 10,
-        checkpoint_dir: str = "checkpoints"
+        checkpoint_dir: str = "src/checkpoints"
     ):
         self.agent = agent
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

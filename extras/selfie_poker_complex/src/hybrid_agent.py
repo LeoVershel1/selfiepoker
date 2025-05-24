@@ -18,7 +18,7 @@ class HybridAgent:
         learning_rate: float = 0.1,
         discount_factor: float = 0.95,
         epsilon: float = 0.1,
-        q_table_path: str = "q_table.pkl",
+        q_table_path: str = "src/q_table.pkl",
         reward_scale: float = 1.0
     ):
         self.exploration_weight = exploration_weight
