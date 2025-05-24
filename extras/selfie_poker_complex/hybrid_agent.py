@@ -7,6 +7,7 @@ import os
 from agent import PokerAgent, GameObservation
 from game import GameState
 from mcts_agent_new import MCTSNode, MCTSAgent
+from tqdm import tqdm
 
 class HybridAgent:
     def __init__(
@@ -17,7 +18,8 @@ class HybridAgent:
         learning_rate: float = 0.1,
         discount_factor: float = 0.95,
         epsilon: float = 0.1,
-        q_table_path: str = "q_table.pkl"
+        q_table_path: str = "q_table.pkl",
+        reward_scale: float = 1.0
     ):
         self.exploration_weight = exploration_weight
         self.max_simulations = max_simulations
@@ -26,6 +28,7 @@ class HybridAgent:
         self.discount_factor = discount_factor
         self.epsilon = epsilon
         self.q_table_path = q_table_path
+        self.reward_scale = reward_scale
         self.q_table = self._load_q_table()
         self.mcts = MCTSAgent(
             exploration_weight=exploration_weight,
@@ -33,6 +36,7 @@ class HybridAgent:
             max_depth=max_depth
         )
         self.agent = PokerAgent()  # Create a PokerAgent instance for reward calculation
+        self.episode_rewards = []  # Track rewards for analysis
     
     def _load_q_table(self) -> Dict[str, Dict[int, float]]:
         """Load Q-table from file if it exists, otherwise create new one"""
@@ -91,24 +95,29 @@ class HybridAgent:
         state_key = self._get_state_key(state)
         next_state_key = self._get_state_key(next_state)
         
+        # Scale the reward
+        scaled_reward = reward * self.reward_scale
+        
         # Get current Q-value
         current_q = self.q_table[state_key][action]
         
         # Get maximum Q-value for next state
         next_max_q = max(self.q_table[next_state_key].values()) if self.q_table[next_state_key] else 0
         
-        # Update Q-value using Q-learning formula
-        new_q = current_q + self.learning_rate * (reward + self.discount_factor * next_max_q - current_q)
+        # Update Q-value using Q-learning formula with reward scaling
+        new_q = current_q + self.learning_rate * (scaled_reward + self.discount_factor * next_max_q - current_q)
         self.q_table[state_key][action] = new_q
     
     def train_episode(self, num_episodes: int = 1000, save_interval: int = 100):
         """Train the agent for multiple episodes"""
         agent = PokerAgent()
+        best_reward = float('-inf')
         
-        for episode in range(num_episodes):
+        for episode in tqdm(range(num_episodes), desc="Training episodes"):
             state = agent.reset()
             total_reward = 0
             done = False
+            steps = 0
             
             while not done:
                 # Get action from hybrid agent
@@ -122,11 +131,31 @@ class HybridAgent:
                 
                 total_reward += reward
                 state = next_state
+                steps += 1
             
-            # Save Q-table periodically
-            if (episode + 1) % save_interval == 0:
+            # Track episode rewards
+            self.episode_rewards.append(total_reward)
+            
+            # Update best reward
+            if total_reward > best_reward:
+                best_reward = total_reward
+                # Save best model
                 self._save_q_table()
-                print(f"Episode {episode + 1}, Total Reward: {total_reward}")
+            
+            # Save periodically
+            if (episode + 1) % save_interval == 0:
+                avg_reward = np.mean(self.episode_rewards[-save_interval:])
+                print(f"\nEpisode {episode + 1}")
+                print(f"Average reward (last {save_interval} episodes): {avg_reward:.2f}")
+                print(f"Best reward so far: {best_reward:.2f}")
+                print(f"Steps in last episode: {steps}")
+                
+                # Adjust learning parameters based on performance
+                if avg_reward < 0:
+                    self.learning_rate *= 0.95  # Reduce learning rate if performance is poor
+                    self.epsilon = min(0.5, self.epsilon * 1.05)  # Increase exploration
+                elif avg_reward > 0:
+                    self.epsilon = max(0.05, self.epsilon * 0.95)  # Decrease exploration
     
     def _modify_mcts_selection(self, node: MCTSNode) -> MCTSNode:
         """Modify MCTS selection to use Q-values and consider hand improvements"""
