@@ -42,7 +42,10 @@ class HybridAgent:
         """Load Q-table from file if it exists, otherwise create new one"""
         if os.path.exists(self.q_table_path):
             with open(self.q_table_path, 'rb') as f:
-                return pickle.load(f)
+                loaded_dict = pickle.load(f)
+                # Convert loaded dict to nested defaultdict
+                return defaultdict(lambda: defaultdict(float), 
+                    {k: defaultdict(float, v) for k, v in loaded_dict.items()})
         return defaultdict(lambda: defaultdict(float))
     
     def _save_q_table(self):
